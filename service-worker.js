@@ -1,4 +1,4 @@
-const CACHE_NAME = 'la-miniera-perduta-v9';
+const CACHE_NAME = 'la-miniera-perduta-v10';
 const ESSENTIAL_FILES = [
   './',
   './index.html',

@@ -193,7 +193,7 @@
 
   <div id="overlay">
     <h1>LA MINIERA PERDUTA</h1>
-    <div class="sub">L'avventura di John · 17 livelli · nuovi mondi in arrivo</div>
+    <div class="sub">L'avventura di John · 20 livelli · nuovi mondi in arrivo</div>
     <p><b style="color:var(--hero)">John</b> era un minatore molto bravo. Un giorno un amico gli parlò di una miniera leggendaria — <b>LA MINIERA PERDUTA</b> — che nasconde un tesoro difficilissimo da prendere. John partì per trovarla. Là sotto lo aspettano <b>10 livelli</b> di prove, un <b style="color:var(--lava)">boss</b> cattivo... e qualcosa di più prezioso del tesoro.</p>
     <div class="keys" id="keysInfo">
       <div><kbd>←</kbd> <kbd>→</kbd> muoviti</div>
@@ -618,6 +618,83 @@ const LEVELS = [
     "#########^^^^^####aaaaa####^^^^^^^###aaaaaa#######^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^######################",
     "#################################################################################################################################",
     "#################################################################################################################################"
+  ]) },
+{ name: "Il Vecchio Ufficio", sub: "fotocopiatrici impazzite e una stanza segreta!", fric: 0.75, deco:'office',
+  theme: { sky:false, bgTop:'#1e2736', bgBot:'#39465a', glow:'rgba(90,180,255,0.10)', rock:'#59667a', rockLight:'#91a0b8', rockDark:'#303947', plat:'#77859a', platLight:'#b9c5d6', platDark:'#424d5d', haz:'#ff4b16', hazTop:'#ffc13b', gem:'#43e0d0' },
+  map: levelMap([
+    "#.................................................................................................................................#",
+    "#.................................................................................................................................#",
+    "#.................................................................................................................................#",
+    "#.................................................................................................................................#",
+    "#.................................................................................................................................#",
+    "#.................................................................................................................................#",
+    "#.................................................................................................................................#",
+    "#.................................................................................................................................#",
+    "#.................................................................................................................................#",
+    "#.................................................................................................................................#",
+    "#.............................................o...............................................................o...................#",
+    "#............................................===.............................................................===..................#",
+    "#.P..E..C...y....E...C....y....E.................y....E...C....===....E......b.....d....E...C....r....L.....G.F....................#",
+    "###################################################################################################################################",
+    "###################################################################################################################################",
+    "###################################################################################################################################"
+  ]) },
+{ name: "Il Palazzo Gigante", sub: "usa il rampino e scala fino al mini-boss!", fric: 0.75, deco:'tower',
+  theme: { sky:true, day:false, bgTop:'#101a35', bgBot:'#5d6d91', glow:'rgba(80,160,255,0.12)', rock:'#505b70', rockLight:'#8b99b2', rockDark:'#293142', plat:'#64728a', platLight:'#a8b7cf', platDark:'#354054', haz:'#76d928', hazTop:'#caff5a', gem:'#ffd24a' },
+  map: levelMap([
+    "#....U........A........U........A........U........................................#",
+    "#................................................................................#",
+    "#.........................................................x...W..L...G.F.........#",
+    "#.....................................................############################",
+    "#................................................g...............................#",
+    "#..............................................======...C.........................#",
+    "#..........................................g.....................................#",
+    "#....................................C...======..................................#",
+    "#.................................g..............................................#",
+    "#...........................======........E......................................#",
+    "#.........................g......................................................#",
+    "#...................C...======...................................................#",
+    "#.................g..............................................................#",
+    "#...........======.........E.....................................................#",
+    "#.........g......................................................................#",
+    "#...C...======...................................................................#",
+    "#..............g.................................................................#",
+    "#....................======....E.................................................#",
+    "#..........................g.....................................................#",
+    "#..............................C...======........................................#",
+    "#........................................g.......................................#",
+    "#............................................======...E.........................#",
+    "#..................................................g.............................#",
+    "#......................................................C...======................#",
+    "#..............................................................g.................#",
+    "#.................................................................======.........#",
+    "#......................................................................g.........#",
+    "#................................................................C...======......#",
+    "#.P..E..======================================================================.....#",
+    "##########^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+    "##################################################################################"
+  ]) },
+{ name: "Il Castello Finale", sub: "ponte, prigioni, armeria e sala del trono!", fric:0.75, deco:'finalCastle',
+  theme: { sky:false, bgTop:'#160f1d', bgBot:'#3b1830', glow:'rgba(255,60,90,0.16)', rock:'#514355', rockLight:'#8c7291', rockDark:'#281f2d', plat:'#735d78', platLight:'#b99abd', platDark:'#3d3042', haz:'#ff4b16', hazTop:'#ffc13b', gem:'#43e0d0' },
+  map: levelMap([
+    "#....................................................................................................................................................#",
+    "#.....t........t...........t.....................t................t................t....................t.................................................#",
+    "#....................................................................................................................................................#",
+    "#....................................................................................................................................................#",
+    "#....................................................................................................................................................#",
+    "#....................................................................................................................................................#",
+    "#....................................................................................................................................................#",
+    "#....................................................................................................................................................#",
+    "#....................................................................................................................................................#",
+    "#....................................................................................................................................................#",
+    "#....................................................................................................................................................#",
+    "#....................................................................................................................................................#",
+    "#....................................................................................................................................................#",
+    "#....................................................................................................................................................#",
+    "#................C...........C..........E......C.....b..C...E....C..............4....C........q..............Z............................................#",
+    "#.P..E....DDDDDDDDDDDD...################..#############################..##########################..###############################################.....#",
+    "########^^^^^^^^^^^^^^^^^^###############################################################################################################################",
+    "#########################################################################################################################################################"
   ]) }
 ];
 let currentLevel = 0;
@@ -635,11 +712,16 @@ let bushes = [], pools = [];
 let snowSpawners = [], snowballs = [];
 let acidPools = [];
 let fallingHazards = [], bouncePads = [];
+let photocopiers = [], papers = [], grappleAnchors = [];
+let secretDoor = null, officeButton = null, officeButtons = [], grappleItem = null, hammerItem = null, armorItem = null, quizTrigger = null;
+let grappleOwned = false, officeButtonPressed = false, quizCompleted = false, armorReady = false, armorActive = 0;
+let grappleCooldown = 0;
+let bossAcidWarnings = [], bossAcidPools = [];
 let wind = { cyc: 0, dir: 1 };
 let windPhase = 0, windDir = 1;
-let weapons = { spada:false, pistola:false, suprema:false };
+let weapons = { spada:false, pistola:false, suprema:false, martello:false };
 let activeWeapon = null;
-const WEAPON_INFO = { spada:{icon:'\ud83d\udde1\ufe0f',nome:'SPADA',dmg:10}, pistola:{icon:'\ud83d\udd2b',nome:'PISTOLA',dmg:50}, suprema:{icon:'\u2694\ufe0f',nome:'SPADA SUPREMA',dmg:100} };
+const WEAPON_INFO = { spada:{icon:'\ud83d\udde1\ufe0f',nome:'SPADA',dmg:10}, pistola:{icon:'\ud83d\udd2b',nome:'PISTOLA',dmg:50}, suprema:{icon:'\u2694\ufe0f',nome:'SPADA SUPREMA',dmg:100}, martello:{icon:'\ud83d\udd28',nome:'MARTELLO DEL TERREMOTO',dmg:50} };
 function useCape() {
   if (!capeOwned || capeUses <= 0 || capeActive > 0 || state !== 'play') return;
   capeUses--; capeActive = 300;
@@ -651,7 +733,7 @@ function updateCapeBtn() {
   b.style.display = (capeOwned && capeUses > 0) ? 'flex' : 'none';
   b.textContent = '\ud83e\udde3' + capeUses;
 }
-function ownedWeapons(){ return ['spada','pistola','suprema'].filter(w=>weapons[w]); }
+function ownedWeapons(){ return ['spada','pistola','suprema','martello'].filter(w=>weapons[w]); }
 function cycleWeapon(){
   const own = ownedWeapons();
   if (own.length < 2) return;
@@ -670,7 +752,8 @@ function buildLevel() {
   solids = []; lava = []; acidPools = []; gems = []; checkpoints = [];
   lever = null; gate = null; finish = null;
   enemies = []; buttons = []; bullets = []; fireballs = []; floatTexts = []; boss = null; hearts = [];
-  decos = []; ambient = []; doggy = null; chest = null; cape = null; droppers = []; vases = []; bushes = []; pools = []; snowSpawners = []; snowballs = []; fallingHazards = []; bouncePads = []; wind.cyc = 0; wind.dir = 1;
+  decos = []; ambient = []; doggy = null; chest = null; cape = null; droppers = []; vases = []; bushes = []; pools = []; snowSpawners = []; snowballs = []; fallingHazards = []; bouncePads = []; photocopiers = []; papers = []; grappleAnchors = []; bossAcidWarnings = []; bossAcidPools = [];
+  secretDoor = null; officeButton = null; officeButtons = []; grappleItem = null; hammerItem = null; armorItem = null; quizTrigger = null; officeButtonPressed = false; quizCompleted = false; armorReady = false; armorActive = 0;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const ch = MAP[r][c];
@@ -702,8 +785,20 @@ function buildLevel() {
       else if (ch === 'I') fallingHazards.push({x:x+TILE/2,kind:'cone',timer:45+((c*37)%120),y:-20,falling:false});
       else if (ch === 'T') fallingHazards.push({x:x+TILE/2,kind:'furniture',timer:120+((c*29)%170),y:y+TILE/2,sourceY:y+TILE/2,falling:false});
       else if (ch === 'O') fallingHazards.push({x:x+TILE/2,kind:'hanging',timer:110+((c*41)%180),y:y+TILE/2,sourceY:y+TILE/2,falling:false});
+      else if (ch === 'y') photocopiers.push({x:x+3,y:y+7,w:35,h:33,timer:100+((c*43)%120),dir:1});
+      else if (ch === 'd') secretDoor = {x,y:y-TILE,w:TILE,h:TILE*2,open:false};
+      else if (ch === 'b') { const bt={x:x+8,y:y+22,w:24,h:16,pressed:false}; officeButtons.push(bt); officeButton=bt; }
+      else if (ch === 'r') grappleItem = {x:x+8,y:y+4,w:26,h:32,taken:grappleOwned};
+      else if (ch === 'g') grappleAnchors.push({x:x+TILE/2,y:y+TILE/2});
+      else if (ch === 'U') fallingHazards.push({x:x+TILE/2,kind:'water',timer:60+((c*47)%140),y:-20,falling:false});
+      else if (ch === 't') fallingHazards.push({x:x+TILE/2,kind:'brick',timer:80+((c*31)%150),y:-20,falling:false});
+      else if (ch === 'x') enemies.push({x:x+2,y:y-18,w:38,h:58,dir:1,spd:1.4,hp:300,maxHp:300,alive:true,minX:x-120,maxX:x+120,r,c,x0:x+2,respawnT:0,elite:true,miniBoss:true});
+      else if (ch === 'W') hammerItem = {x:x+6,y:y+2,w:30,h:34,taken:weapons.martello};
+      else if (ch === '4') armorItem = {x:x+7,y:y+2,w:28,h:34,taken:false};
+      else if (ch === 'q') quizTrigger = {x:x-10,y:y-50,w:TILE+20,h:TILE*2};
       else if (ch === 'S') snowSpawners.push({x:x+TILE/2, y:y+TILE/2, timer: 120 + ((r*53+c*29) % 160)});
       else if (ch === 'X') boss = {x:x-40,y:y-56,w:76,h:96,hp:1000,maxHp:1000,dir:-1,t:0,alive:true,hit:0};
+      else if (ch === 'Z') boss = {x:x-46,y:y-70,yBase:y-70,w:92,h:112,hp:2000,maxHp:2000,dir:-1,t:0,alive:true,hit:0,final:true,quizDone:false,attackKind:'fire',arenaMin:x-340,arenaMax:x+170};
     }
   }
   for (const en of enemies) {
@@ -763,7 +858,7 @@ function buildLevel() {
     if (D === 'city' && above && c % 7 === 3 && r >= 9) decos.push({t:'lamp', x: x+TILE/2-3, y: y-46});
     if (D === 'city' && !above && r < 9 && hsh < 45) decos.push({t:'window', x: x+9+(hsh%2)*14, y: y+8+(hsh%3)*9, on: hsh%3!==0});
   }
-  if (boss) doggy = {x: LEVEL_W - 80, y: 10*TILE - 6, state: 'caged', dir: -1, moving: false};
+  if (boss && !boss.final) doggy = {x: LEVEL_W - 80, y: 10*TILE - 6, state: 'caged', dir: -1, moving: false};
   else if (currentLevel >= 10) doggy = {x: spawn.x - 26, y: spawn.y + 28, state: 'free', companion: true, dir: 1, moving: false, bite: 0};
 }
 
@@ -836,18 +931,24 @@ function doJump() {
 
 function doAttack() {
   if (state !== 'play' || player.dead > 0 || atkCd > 0) return;
-  if (!weapons.spada && !weapons.pistola && !weapons.suprema) return;
+  if (!weapons.spada && !weapons.pistola && !weapons.suprema && !weapons.martello) return;
   atkCd = 22;
   if (!activeWeapon) activeWeapon = ownedWeapons()[0];
   if (activeWeapon === 'pistola') {
     bullets.push({ x: player.x + player.w/2, y: player.y + 12, vx: 13 * player.facing, dmg: 50 });
+  } else if (activeWeapon === 'martello') {
+    swing = 14; atkCd = 34;
+    const cx = player.x + player.w/2, cy = player.y + player.h;
+    boom(cx, cy, '#ffd24a');
+    for (const en of enemies) if (en.alive && Math.abs((en.x+en.w/2)-cx)<110 && Math.abs((en.y+en.h)-cy)<75) hurtEnemy(en, 50);
+    if (boss && boss.alive && (!boss.final || boss.quizDone) && Math.abs((boss.x+boss.w/2)-cx)<135) hurtBoss(50);
   } else {
     const meleeDmg = activeWeapon === 'suprema' ? 100 : 10;
     swing = 10;
     const reach = activeWeapon === 'suprema' ? 54 : 36;
     const hb = { x: player.facing > 0 ? player.x + player.w : player.x - reach, y: player.y - 6, w: reach, h: player.h + 12 };
     for (const en of enemies) if (en.alive && rectsOverlap(hb, en)) hurtEnemy(en, meleeDmg);
-    if (boss && boss.alive && rectsOverlap(hb, boss)) hurtBoss(meleeDmg);
+    if (boss && boss.alive && !boss.final && rectsOverlap(hb, boss)) hurtBoss(meleeDmg);
   }
 }
 function hurtEnemy(en, d) {
@@ -869,7 +970,16 @@ function hurtBoss(d) {
     boom(boss.x + 38, boss.y + 40, '#ffd24a'); boom(boss.x + 38, boss.y + 60, '#ff5a1f');
   }
 }
-function hurtPlayer(d) {
+function hurtPlayer(d, fromFinalBoss=false) {
+  if (fromFinalBoss && boss && boss.final && armorReady && armorActive === 0) {
+    armorReady = false; armorActive = 600;
+    floatTexts.push({ t: '\ud83d\udee1\ufe0f ARMATURA ATTIVA: 10s!', x: player.x, y: player.y - 28, life: 2, big: true });
+    return;
+  }
+  if (armorActive > 0) {
+    floatTexts.push({ t: 'ARMATURA!', x: player.x + player.w/2, y: player.y - 14, life: 0.8, heal: true });
+    return;
+  }
   if (capeActive > 0) {
     floatTexts.push({ t: 'BLOCCATO!', x: player.x + player.w/2, y: player.y - 14, life: 0.8, heal: true });
     return;
@@ -889,6 +999,7 @@ function resetPlayer(full) {
   for (const h of fallingHazards) { h.falling = false; h.y = h.sourceY ?? -20; h.timer = 75 + ((h.x*7)%90); }
   player.x = respawnPoint.x; player.y = respawnPoint.y;
   player.vx = 0; player.vy = 0; player.jumps = 0; player.flipping = 0; player.dead = 0;
+  grappleCooldown = 0;
 }
 
 function rectsOverlap(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
@@ -954,6 +1065,18 @@ function update() {
     player.vy += 0.62;
     if (player.vy > 15) player.vy = 15;
     if (player.flipping > 0) player.flipping -= 0.35;
+    if (grappleCooldown > 0) grappleCooldown--;
+    if (grappleOwned && grappleCooldown === 0 && player.vy > 2 && grappleAnchors.length) {
+      let best = null, bestD = 999;
+      for (const a of grappleAnchors) {
+        const d = Math.hypot(a.x-(player.x+player.w/2),a.y-(player.y+player.h/2));
+        if (d < bestD && d < 230 && a.y < player.y+40) { best=a; bestD=d; }
+      }
+      if (best) {
+        player.vy = -8.2; player.vx += Math.sign(best.x-player.x)*1.4; grappleCooldown = 42;
+        floatTexts.push({t:'RAMPINO!',x:best.x,y:best.y-12,life:0.55});
+      }
+    }
 
     // movimento X + collisioni
     player.x += player.vx;
@@ -969,6 +1092,11 @@ function update() {
     if (gate && !leverPulled && rectsOverlap(player, gate)) {
       if (player.vx > 0) player.x = gate.x - player.w;
       else if (player.vx < 0) player.x = gate.x + gate.w;
+      player.vx = 0;
+    }
+    if (secretDoor && !officeButtonPressed && rectsOverlap(player, secretDoor)) {
+      if (player.vx > 0) player.x = secretDoor.x - player.w;
+      else if (player.vx < 0) player.x = secretDoor.x + secretDoor.w;
       player.vx = 0;
     }
 
@@ -1028,7 +1156,13 @@ function update() {
         const hit = h.kind === 'acid' ? {x:h.x-7,y:h.y-10,w:14,h:22}
           : h.kind === 'cone' ? {x:h.x-13,y:h.y-16,w:26,h:32}
           : {x:h.x-22,y:h.y-18,w:44,h:38};
-        if (rectsOverlap(player, hit)) { die(); h.y = LEVEL_H + 100; }
+        if (rectsOverlap(player, hit)) {
+          if (h.kind === 'water') {
+            player.vy = 11; player.vx *= 0.4; grappleCooldown = 150; invuln = 25;
+            floatTexts.push({t:'ACQUA! RAMPINO STACCATO',x:player.x,y:player.y-18,life:1.2,big:true});
+          } else die();
+          h.y = LEVEL_H + 100;
+        }
         let landed = h.y > LEVEL_H + 40;
         for (const s of solids) if (!s.falling && h.x > s.x && h.x < s.x+s.w && h.y > s.y && h.y < s.y+s.h+12) { landed = true; break; }
         if (landed) {
@@ -1055,8 +1189,27 @@ function update() {
         respawnPoint = {x:cp.x-player.w/2, y:cp.y-player.h-4};
       }
     }
+    for (const bt of officeButtons) if (!bt.pressed && rectsOverlap(player, bt)) {
+      bt.pressed = true; officeButtonPressed = true; if (secretDoor) secretDoor.open = true;
+      floatTexts.push({t:secretDoor?'PORTA SEGRETA APERTA!':'CELLA APERTA!',x:bt.x,y:bt.y-20,life:1.8,big:true});
+    }
+    if (grappleItem && !grappleItem.taken && rectsOverlap(player, grappleItem)) {
+      grappleItem.taken = true; grappleOwned = true;
+      floatTexts.push({t:'RAMPINO OTTENUTO!',x:player.x,y:player.y-25,life:2,big:true});
+    }
+    if (hammerItem && !hammerItem.taken && !enemies.some(en=>en.miniBoss && en.alive) && rectsOverlap(player, hammerItem)) {
+      hammerItem.taken = true; weapons.martello = true; activeWeapon = 'martello'; updateWeaponHud();
+      floatTexts.push({t:'MARTELLO DEL TERREMOTO!',x:player.x,y:player.y-25,life:2,big:true});
+    }
+    if (armorItem && !armorItem.taken && rectsOverlap(player, armorItem)) {
+      armorItem.taken = true; armorReady = true;
+      floatTexts.push({t:'ARMATURA: SI ATTIVA AL PRIMO COLPO!',x:player.x,y:player.y-25,life:2,big:true});
+    }
+    if (quizTrigger && !quizCompleted && rectsOverlap(player, quizTrigger)) {
+      quizCompleted = true; showBossQuiz(0);
+    }
     // leva
-    if (lever && !leverPulled && rectsOverlap(player, lever)) {
+    if (lever && !leverPulled && !enemies.some(en=>en.miniBoss && en.alive) && rectsOverlap(player, lever)) {
       leverPulled = true; lever.pulled = true;
       document.getElementById('leverStatus').textContent = '🔓 Portone aperto!';
       document.getElementById('leverStatus').classList.add('lever-on');
@@ -1094,41 +1247,73 @@ function update() {
     bullets = bullets.filter(b => {
       b.x += b.vx;
       for (const en of enemies) if (en.alive && b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) { hurtEnemy(en, b.dmg); return false; }
-      if (boss && boss.alive && b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h) { hurtBoss(b.dmg); return false; }
+      if (boss && boss.alive && (!boss.final || boss.quizDone) && b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h) { if(!boss.final) hurtBoss(b.dmg); else floatTexts.push({t:'SERVE IL MARTELLO!',x:boss.x+boss.w/2,y:boss.y,life:0.8}); return false; }
       for (const s of solids) if (s.type !== 'plat' && b.x > s.x && b.x < s.x + s.w && b.y > s.y && b.y < s.y + s.h) return false;
       return b.x > -50 && b.x < LEVEL_W + 50;
     });
+    // fotocopiatrici: lampeggiano, mostrano la traiettoria e sparano fogli taglienti
+    for (const pc of photocopiers) {
+      pc.timer--;
+      if (pc.timer <= 0) {
+        const dir = Math.sign((player.x+player.w/2)-pc.x) || 1;
+        papers.push({x:pc.x+18,y:pc.y+10,vx:dir*7.5,w:24,h:8});
+        pc.timer = 150 + ((pc.x*3)%100);
+      }
+    }
+    papers = papers.filter(p => {
+      p.x += p.vx;
+      if (player.dead===0 && rectsOverlap(player,p)) { die(); return false; }
+      for (const s of solids) if (!s.oneWay && p.x>s.x && p.x<s.x+s.w && p.y>s.y && p.y<s.y+s.h) return false;
+      return p.x>-40 && p.x<LEVEL_W+40;
+    });
     // boss
-    if (boss && boss.alive) {
+    if (boss && boss.alive && (!boss.final || boss.quizDone)) {
       boss.t++;
       if (boss.hit > 0) boss.hit--;
       boss.x += 1.2 * boss.dir;
-      const bMin = LEVEL_W * 0.40, bMax = LEVEL_W - boss.w - 50;
+      const bMin = boss.final ? boss.arenaMin : LEVEL_W * 0.40;
+      const bMax = boss.final ? boss.arenaMax : LEVEL_W - boss.w - 50;
       if (boss.x < bMin) { boss.x = bMin; boss.dir = 1; }
       if (boss.x > bMax) { boss.x = bMax; boss.dir = -1; }
-      boss.y = 10 * TILE - boss.h - Math.abs(Math.sin(boss.t * 0.11)) * 4;
-      if (boss.t % 85 === 0 && player.dead === 0) {
+      boss.y = (boss.final ? boss.yBase : 10*TILE-boss.h) - Math.abs(Math.sin(boss.t * 0.11)) * 4;
+      if (boss.t % (boss.final ? 100 : 85) === 0 && player.dead === 0 && (!boss.final || boss.attackKind==='fire')) {
         const cx = boss.x + boss.w/2, cy = boss.y + boss.h/2;
         const dx = (player.x + player.w/2) - cx, dy = (player.y + player.h/2) - cy;
         const L = Math.hypot(dx, dy) || 1;
         fireballs.push({ x: cx, y: cy, vx: dx/L*5.2, vy: dy/L*5.2 });
+        if (boss.final) boss.attackKind='acid';
+      } else if (boss.final && boss.t % 100 === 0 && boss.attackKind==='acid') {
+        bossAcidWarnings.push({x:player.x+player.w/2,y:player.y+player.h,timer:60});
+        boss.attackKind='fire';
       }
       if (player.dead === 0 && invuln <= 0 && rectsOverlap(player, boss)) {
-        hurtPlayer(10);
+        hurtPlayer(10, boss.final);
         player.vx = 11 * Math.sign(player.x - boss.x || -1); player.vy = -6;
       }
     }
+    bossAcidWarnings = bossAcidWarnings.filter(w => {
+      w.timer--;
+      if (w.timer<=0) { bossAcidPools.push({x:w.x-48,y:w.y-10,w:96,h:22,life:780}); return false; }
+      return true;
+    });
+    bossAcidPools = bossAcidPools.filter(p => {
+      p.life--;
+      if (p.life===180) { p.x+=28; p.w=40; }
+      if (player.dead===0 && rectsOverlap(player,p)) hurtPlayer(10, true);
+      return p.life>0;
+    });
+    if (armorActive > 0) armorActive--;
     if (bossDeadTimer > 0) {
       bossDeadTimer--;
       if (bossDeadTimer === 0) {
         totalGems += gemsCollected; totalGemsMax += gems.length;
-        state = 'win'; showActTwo();
+        state = 'win'; boss && boss.final ? showWorldMapTeaser() : showActTwo();
       }
     }
     // palle di fuoco del boss (-5 cuori)
     fireballs = fireballs.filter(f => {
       f.x += f.vx; f.y += f.vy;
-      if (player.dead === 0 && invuln <= 0 && Math.abs(f.x - (player.x + player.w/2)) < 20 && Math.abs(f.y - (player.y + player.h/2)) < 24) { hurtPlayer(5); return false; }
+      if (player.dead === 0 && invuln <= 0 && Math.abs(f.x - (player.x + player.w/2)) < 20 && Math.abs(f.y - (player.y + player.h/2)) < 24) { hurtPlayer(5, !!(boss && boss.final)); return false; }
       for (const s of solids) if (s.type !== 'plat' && f.x > s.x && f.x < s.x + s.w && f.y > s.y && f.y < s.y + s.h) return false;
       return f.x > -60 && f.x < LEVEL_W + 60 && f.y > -60 && f.y < LEVEL_H + 120;
     });
@@ -1439,6 +1624,18 @@ function draw() {
     // divano e letto
     ctx.fillStyle='#4d80b8'; ctx.fillRect(houseX+170,LEVEL_H-250,170,62); ctx.fillRect(houseX+150,LEVEL_H-220,210,32);
     ctx.fillStyle='#7ab6d8'; ctx.fillRect(houseX+1250,300,250,55); ctx.fillStyle='#eef6fc'; ctx.fillRect(houseX+1265,285,75,25);
+  } else if (LEVELS[currentLevel].deco === 'office') {
+    ctx.fillStyle='#d9e0ea';ctx.fillRect(0,50,LEVEL_W,LEVEL_H-170);
+    ctx.fillStyle='#59667a';ctx.font='bold 24px Trebuchet MS';ctx.textAlign='left';
+    ctx.fillText('SALA RIUNIONI',220,120);ctx.fillText('UFFICIO DEL DIRETTORE',2300,120);ctx.fillText('STANZA SEGRETA',3900,120);
+    for(let x=260;x<LEVEL_W;x+=760){ctx.fillStyle='#765038';ctx.fillRect(x,400,260,22);ctx.fillRect(x+18,422,12,70);ctx.fillRect(x+230,422,12,70);}
+  } else if (LEVELS[currentLevel].deco === 'tower') {
+    ctx.fillStyle='rgba(30,42,70,0.58)';ctx.fillRect(80,40,LEVEL_W-160,LEVEL_H-80);
+    ctx.fillStyle='rgba(120,180,255,0.22)';for(let y=100;y<LEVEL_H-100;y+=170)for(let x=140;x<LEVEL_W-120;x+=220)ctx.fillRect(x,y,70,90);
+  } else if (LEVELS[currentLevel].deco === 'finalCastle') {
+    ctx.fillStyle='#24162b';ctx.fillRect(0,60,LEVEL_W,LEVEL_H-140);
+    ctx.fillStyle='#c6a7cc';ctx.font='bold 23px Trebuchet MS';ctx.textAlign='left';
+    ctx.fillText('PONTE LEVATOIO',240,130);ctx.fillText('PRIGIONI',1800,130);ctx.fillText('SALA DELLE ARMI',3300,130);ctx.fillText('SALA DEL TRONO',4400,130);
   }
 
   // rocce
@@ -1516,10 +1713,29 @@ function draw() {
       ctx.fillStyle = '#ff9fc9'; ctx.beginPath(); ctx.arc(h.x,h.y-13,12,Math.PI,0); ctx.fill();
     } else if (h.kind === 'furniture') {
       ctx.fillStyle='#744b35';ctx.fillRect(h.x-22,h.y-18,44,38);ctx.fillStyle='#d5ad75';ctx.fillRect(h.x-15,h.y-11,12,10);ctx.fillRect(h.x+3,h.y-11,12,10);
+    } else if (h.kind === 'water') {
+      ctx.fillStyle='#45aaff';ctx.beginPath();ctx.arc(h.x,h.y,9,0,7);ctx.fill();ctx.fillStyle='#bfe8ff';ctx.fillRect(h.x-2,h.y-13,4,8);
+    } else if (h.kind === 'brick') {
+      ctx.fillStyle='#9b5940';ctx.fillRect(h.x-17,h.y-12,34,24);ctx.strokeStyle='#4a2b22';ctx.strokeRect(h.x-17,h.y-12,34,24);
     } else {
       ctx.fillStyle='#ffd9a8';ctx.beginPath();ctx.arc(h.x,h.y,13,0,7);ctx.fill();ctx.strokeStyle='#4b3429';ctx.beginPath();ctx.moveTo(h.x,h.y-13);ctx.lineTo(h.x,h.y-32);ctx.stroke();
     }
   }
+  // fotocopiatrici, traiettorie e fogli
+  for(const pc of photocopiers){
+    const warn=pc.timer<45;ctx.fillStyle=warn&&Math.floor(t/5)%2===0?'#ff5a5a':'#d8dde5';ctx.fillRect(pc.x,pc.y,pc.w,pc.h);
+    ctx.fillStyle='#39465a';ctx.fillRect(pc.x+5,pc.y+7,pc.w-10,10);ctx.fillStyle='#fff';ctx.fillRect(pc.x+9,pc.y-5,18,10);
+    if(warn){ctx.strokeStyle='rgba(255,70,70,0.55)';ctx.setLineDash([8,6]);ctx.beginPath();ctx.moveTo(pc.x+18,pc.y+15);ctx.lineTo(pc.x+220,pc.y+15);ctx.stroke();ctx.setLineDash([]);}
+  }
+  for(const p of papers){ctx.fillStyle='#fff';ctx.fillRect(p.x,p.y,p.w,p.h);ctx.strokeStyle='#8fa0b8';ctx.strokeRect(p.x,p.y,p.w,p.h);}
+  if(secretDoor&&!officeButtonPressed){ctx.fillStyle='#313846';ctx.fillRect(secretDoor.x,secretDoor.y,secretDoor.w,secretDoor.h);ctx.fillStyle='#91a0b8';ctx.fillText('?',secretDoor.x+14,secretDoor.y+35);}
+  for(const bt of officeButtons){ctx.fillStyle=bt.pressed?'#43e0d0':'#ff5a5a';ctx.fillRect(bt.x,bt.y,bt.w,bt.h);}
+  for(const a of grappleAnchors){ctx.strokeStyle='#ffd24a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(a.x,a.y,10,0,7);ctx.stroke();ctx.beginPath();ctx.moveTo(a.x,a.y+10);ctx.lineTo(a.x,a.y+23);ctx.stroke();}
+  if(grappleItem&&!grappleItem.taken){ctx.fillStyle='#ffd24a';ctx.font='bold 25px Trebuchet MS';ctx.fillText('🪝',grappleItem.x,grappleItem.y+25);}
+  if(hammerItem&&!hammerItem.taken&&!enemies.some(en=>en.miniBoss&&en.alive)){ctx.fillStyle='#ffd24a';ctx.font='bold 28px Trebuchet MS';ctx.fillText('🔨',hammerItem.x,hammerItem.y+28);}
+  if(armorItem&&!armorItem.taken){ctx.fillStyle='#7ad0ff';ctx.font='bold 28px Trebuchet MS';ctx.fillText('🛡️',armorItem.x,armorItem.y+28);}
+  for(const w of bossAcidWarnings){ctx.strokeStyle='rgba(120,255,50,'+(0.5+Math.sin(t*.3)*.4)+')';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(w.x,w.y,50,12,0,0,7);ctx.stroke();}
+  for(const p of bossAcidPools){ctx.fillStyle='#76d928';ctx.beginPath();ctx.ellipse(p.x+p.w/2,p.y+p.h/2,p.w/2,p.h/2,0,0,7);ctx.fill();}
 
   // gemme
   for (const gm of gems) {
@@ -1892,6 +2108,7 @@ function draw() {
     ctx.font = 'bold 14px Trebuchet MS'; ctx.textAlign = 'center';
     ctx.fillText('\ud83e\udde3 ' + secs + 's', player.x + player.w/2, player.y - 34);
   }
+  if(armorActive>0){ctx.strokeStyle='rgba(90,190,255,0.8)';ctx.lineWidth=4;ctx.beginPath();ctx.arc(player.x+player.w/2,player.y+player.h/2,38,0,7);ctx.stroke();ctx.fillStyle='#7ad0ff';ctx.font='bold 14px Trebuchet MS';ctx.textAlign='center';ctx.fillText('🛡️ '+Math.ceil(armorActive/60)+'s',player.x+player.w/2,player.y-38);}
   // Doggy
   if (doggy) drawDoggy();
   // forziere del tesoro
@@ -1993,11 +2210,11 @@ function draw() {
     ctx.fillStyle = dg; ctx.fillRect(0, 0, W, H);
   }
   // barre della vita (come nel disegno del designer)
-  if (boss) {
+  if (boss && (!boss.final || boss.quizDone)) {
     const bw = Math.min(500, W - 180), bx2 = (W - bw)/2, by2 = 46;
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(bx2 - 10, by2 - 22, bw + 20, 46);
     ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Trebuchet MS'; ctx.textAlign = 'center';
-    ctx.fillText('VITA BOSS \u00b7 ' + Math.max(0, boss.hp) + ' / 1000\u2764', bx2 + bw/2, by2 - 8);
+    ctx.fillText('VITA BOSS \u00b7 ' + Math.max(0, boss.hp) + ' / ' + boss.maxHp + '\u2764', bx2 + bw/2, by2 - 8);
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(bx2, by2 - 2, bw, 16);
     ctx.fillStyle = '#c22233'; ctx.fillRect(bx2 + 1, by2 - 1, (bw - 2) * Math.max(0, boss.hp)/boss.maxHp, 14);
     const pw = 180, px2 = 16, py2 = H - 30;
@@ -2188,7 +2405,8 @@ function startGame() {
     }
   }
   currentLevel = 0; tries = 0; totalGems = 0; totalGemsMax = 0;
-  weapons = { spada:false, pistola:false, suprema:false };
+  weapons = { spada:false, pistola:false, suprema:false, martello:false };
+  grappleOwned = false;
   activeWeapon = null;
   updateWeaponHud();
   document.getElementById('tries').textContent = '0';
@@ -2216,7 +2434,8 @@ function startLevel() {
   document.getElementById('gems').textContent = '0';
   document.getElementById('levelBadge').textContent = '⛏️ ' + (currentLevel+1) + '/' + LEVELS.length;
   const ls = document.getElementById('leverStatus');
-  if (boss) { ls.textContent = '\ud83d\udc79 Sconfiggi il boss!'; ls.classList.add('lever-on'); }
+  if (boss && boss.final && !boss.quizDone) { ls.textContent = '\ud83c\udff0 Raggiungi la sala del trono'; ls.classList.remove('lever-on'); }
+  else if (boss) { ls.textContent = '\ud83d\udc79 Sconfiggi il boss!'; ls.classList.add('lever-on'); }
   else { ls.textContent = '\ud83d\udd12 Trova la leva'; ls.classList.remove('lever-on'); }
   gemsCollected = 0; leverPulled = false; flipParticles = [];
   playerHP = 50; invuln = 0; atkCd = 0; swing = 0; bossDeadTimer = 0;
@@ -2239,6 +2458,31 @@ function showLevelComplete() {
     <button id="nextBtn" style="pointer-events:all;background:linear-gradient(#ff7a3d,var(--lava));border:none;border-bottom:4px solid #b83a10;color:#fff;border-radius:10px;padding:14px 40px;font-size:20px;font-weight:bold;font-family:inherit;cursor:pointer;letter-spacing:1px;margin-top:14px;">AVANTI ➡️</button>
   `;
   document.getElementById('nextBtn').onclick = () => { currentLevel++; startLevel(); };
+}
+const BOSS_QUESTIONS = [
+  { q:'Qual è il livello più buio dell\'avventura?', a:['La Grotta Oscura','Il Lago di Lava','Il Grattacielo','La Miniera d\'Oro'], ok:0 },
+  { q:'Due portoni: uno sicuro e uno trappola. Un guardiano dice sempre la verità e l\'altro mente. Puoi fare una domanda. Quale?', a:['Quale portone sceglieresti tu?','Quale portone indicherebbe l\'altro guardiano come sicuro? Poi scelgo l\'opposto.','Quale portone è più bello?','Chiedo a entrambi contemporaneamente.'], ok:1 },
+  { q:'Il boss ha 2.000 punti vita. Il Martello del Terremoto infligge 50 danni. Quanti colpi servono?', a:['20','30','40','50'], ok:2 }
+];
+function showBossQuiz(index) {
+  state='quiz'; overlay.classList.remove('hidden');
+  const item=BOSS_QUESTIONS[index];
+  overlay.innerHTML=`<h1 style="color:var(--gold)">LA SFIDA DEL BOSS</h1><div class="sub">Domanda ${index+1} di 3</div><p><b>${item.q}</b></p><div id="quizAnswers" style="display:grid;gap:7px;width:min(680px,95%);"></div>`;
+  const box=document.getElementById('quizAnswers');
+  item.a.forEach((answer,i)=>{
+    const button=document.createElement('button'); button.textContent=answer;
+    button.style.cssText='pointer-events:all;padding:9px;border-radius:8px;border:1px solid #8a7a6a;background:#3b302b;color:#fff;font:inherit;cursor:pointer;';
+    button.onclick=()=>{
+      if(i!==item.ok){ overlay.innerHTML='<h1 style="color:#ff5a5a">RISPOSTA SBAGLIATA!</h1><p>Il livello 20 ricomincia dal ponte levatoio.</p>'; setTimeout(()=>startLevel(),1200); return; }
+      if(index<2) showBossQuiz(index+1); else { overlay.classList.add('hidden'); state='play'; if(boss){boss.quizDone=true;boss.t=0;} floatTexts.push({t:'RISPOSTE ESATTE! COMBATTI!',x:player.x,y:player.y-30,life:2,big:true}); }
+    };
+    box.appendChild(button);
+  });
+}
+function showWorldMapTeaser() {
+  overlay.classList.remove('hidden');
+  overlay.innerHTML=`<h1 style="color:var(--gem)">LA MAPPA DELLA CHIAVE</h1><div class="sub">Il boss finale è sconfitto!</div><p>Il boss rivela che esiste una chiave misteriosa e consegna a John una mappa: <b>Parigi, New York, Londra, Mosca, Roma, Il Cairo, Shanghai, Tokyo, Isola di Pasqua e Chichén Itzá</b>.</p><p>Il viaggio continuerà nei livelli 21–30.</p><button id="mapRestart" style="pointer-events:all;padding:12px 30px;border-radius:9px;background:#1fa596;color:white;border:0;font:inherit;font-weight:bold;">RIGIOCA</button>`;
+  document.getElementById('mapRestart').onclick=()=>startGame();
 }
 function showActTwo() {
   overlay.classList.remove('hidden');
@@ -2279,8 +2523,9 @@ document.getElementById('startBtn').onclick = startGame;
 function testStart(i) {
   currentLevel = i; tries = 0; totalGems = 0; totalGemsMax = 0;
   const armed = i >= 8;
-  weapons = { spada: armed, pistola: armed, suprema: false };
-  activeWeapon = armed ? 'pistola' : null;
+  grappleOwned = i >= 18;
+  weapons = { spada: armed, pistola: armed, suprema: false, martello: i >= 19 };
+  activeWeapon = i >= 19 ? 'martello' : (armed ? 'pistola' : null);
   updateWeaponHud();
   document.getElementById('tries').textContent = '0';
   startLevel();
