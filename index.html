@@ -193,7 +193,7 @@
 
   <div id="overlay">
     <h1>LA MINIERA PERDUTA</h1>
-    <div class="sub">L'avventura di John · 16 livelli · nuovi mondi in arrivo</div>
+    <div class="sub">L'avventura di John · 17 livelli · nuovi mondi in arrivo</div>
     <p><b style="color:var(--hero)">John</b> era un minatore molto bravo. Un giorno un amico gli parlò di una miniera leggendaria — <b>LA MINIERA PERDUTA</b> — che nasconde un tesoro difficilissimo da prendere. John partì per trovarla. Là sotto lo aspettano <b>10 livelli</b> di prove, un <b style="color:var(--lava)">boss</b> cattivo... e qualcosa di più prezioso del tesoro.</p>
     <div class="keys" id="keysInfo">
       <div><kbd>←</kbd> <kbd>→</kbd> muoviti</div>
@@ -591,6 +591,33 @@ const LEVELS = [
     "###########^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^##########",
     "#################################################################################################################################",
     "#################################################################################################################################"
+  ]) },
+{ name: "Casa Dolce Casa?", sub: "il cortile e la casa di John sono infestati!", fric: 0.75, deco:'home',
+  theme: { sky: true, day: true, bgTop:'#7fc5ed', bgBot:'#f2d6b6', glow:'rgba(145,255,45,0.12)',
+    rock:'#8b654e', rockLight:'#c99a78', rockDark:'#523a2d',
+    plat:'#8a6f5b', platLight:'#cfad8f', platDark:'#4d3b31',
+    haz:'#ff4b16', hazTop:'#ffc13b', gem:'#43e0d0' },
+  map: levelMap([
+    "#...............................................................................................................................#",
+    "#...................................................................................T.............O...........T..................#",
+    "#...............................................................................................................................#",
+    "#...............................................................................................................................#",
+    "#...............................................................................................................................#",
+    "#...............................................................................................................................#",
+    "#..................................................................................................................L......G.F...#",
+    "#....................................................................................E...C....=====....E.......===========######.#",
+    "#...................................................................................#############################################",
+    "#..............................................................................................o................................#",
+    "#.............................................................................................===...............................#",
+    "#.....................................................................................N.........................................#",
+    "#...............................................................................................................................#",
+    "#..............................................................T..........O...........N.........................................#",
+    "#.................................................................o............................E................................#",
+    "#.................C...........o..C............C...C...E....M....=====....M....E....C....N....M......E............................#",
+    "#.P....E....M....===......M.....===.....M....===..#########################################################......................#",
+    "#########^^^^^####aaaaa####^^^^^^^###aaaaaa#######^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^######################",
+    "#################################################################################################################################",
+    "#################################################################################################################################"
   ]) }
 ];
 let currentLevel = 0;
@@ -606,6 +633,7 @@ let capeOwned = false, capeUses = 2, capeActive = 0;
 let droppers = [], vases = [];
 let bushes = [], pools = [];
 let snowSpawners = [], snowballs = [];
+let acidPools = [];
 let fallingHazards = [], bouncePads = [];
 let wind = { cyc: 0, dir: 1 };
 let windPhase = 0, windDir = 1;
@@ -639,7 +667,7 @@ function buildLevel() {
   const LV = LEVELS[currentLevel];
   MAP = LV.map; ROWS = MAP.length; COLS = MAP[0].length; LEVEL_W = COLS*TILE; LEVEL_H = ROWS*TILE;
   THEME = LV.theme; FRIC = LV.fric;
-  solids = []; lava = []; gems = []; checkpoints = [];
+  solids = []; lava = []; acidPools = []; gems = []; checkpoints = [];
   lever = null; gate = null; finish = null;
   enemies = []; buttons = []; bullets = []; fireballs = []; floatTexts = []; boss = null; hearts = [];
   decos = []; ambient = []; doggy = null; chest = null; cape = null; droppers = []; vases = []; bushes = []; pools = []; snowSpawners = []; snowballs = []; fallingHazards = []; bouncePads = []; wind.cyc = 0; wind.dir = 1;
@@ -652,7 +680,10 @@ function buildLevel() {
       else if (ch === 'K') solids.push({x,y:y+TILE*0.35,w:TILE,h:TILE*0.3,type:'cone',oneWay:true});
       else if (ch === 'R') solids.push({x,y:y+TILE*0.35,y0:y+TILE*0.35,w:TILE,h:TILE*0.3,type:'fragile',oneWay:true,cracked:true,timer:0,falling:false,vy:0});
       else if (ch === 'D') solids.push({x,y,y0:y,w:TILE,h:TILE,type:'bridge',bridge:true,timer:0,falling:false,vy:0});
+      else if (ch === 'M') solids.push({x,y:y+TILE*0.35,y0:y+TILE*0.35,x0:x,w:TILE*2,h:TILE*0.3,type:'moving',oneWay:true,moving:'x',range:TILE*2.4,phase:c*0.37});
+      else if (ch === 'N') solids.push({x,y:y+TILE*0.35,y0:y+TILE*0.35,x0:x,w:TILE*2,h:TILE*0.3,type:'moving',oneWay:true,moving:'y',range:TILE*3.2,phase:r*0.41});
       else if (ch === '^') lava.push({x,y:y+TILE*0.4,w:TILE,h:TILE*0.6});
+      else if (ch === 'a') acidPools.push({x,y:y+TILE*0.4,w:TILE,h:TILE*0.6});
       else if (ch === 'o') gems.push({x:x+TILE/2,y:y+TILE/2,got:false});
       else if (ch === 'C') checkpoints.push({x:x+TILE/2,y:y+TILE,active:false});
       else if (ch === 'P') spawn = {x:x+8, y:y-4};
@@ -669,6 +700,8 @@ function buildLevel() {
       else if (ch === 'J') bushes.push({x:x+3, y:y+16, w:34, h:24, sq:0});
       else if (ch === 'A') fallingHazards.push({x:x+TILE/2,kind:'acid',timer:30+((c*31)%110),y:-20,falling:false});
       else if (ch === 'I') fallingHazards.push({x:x+TILE/2,kind:'cone',timer:45+((c*37)%120),y:-20,falling:false});
+      else if (ch === 'T') fallingHazards.push({x:x+TILE/2,kind:'furniture',timer:70+((c*29)%130),y:y+TILE/2,sourceY:y+TILE/2,falling:false});
+      else if (ch === 'O') fallingHazards.push({x:x+TILE/2,kind:'hanging',timer:55+((c*41)%140),y:y+TILE/2,sourceY:y+TILE/2,falling:false});
       else if (ch === 'S') snowSpawners.push({x:x+TILE/2, y:y+TILE/2, timer: 120 + ((r*53+c*29) % 160)});
       else if (ch === 'X') boss = {x:x-40,y:y-56,w:76,h:96,hp:1000,maxHp:1000,dir:-1,t:0,alive:true,hit:0};
     }
@@ -853,7 +886,7 @@ function boom(x, y, col) {
 function resetPlayer(full) {
   if (full) { respawnPoint = {x:spawn.x, y:spawn.y}; gemsCollected = 0; gems.forEach(g=>g.got=false); }
   for (const s of solids) if (s.type === 'fragile' || s.bridge) { s.y = s.y0; s.timer = 0; s.falling = false; s.vy = 0; }
-  for (const h of fallingHazards) { h.falling = false; h.y = -20; h.timer = 75 + ((h.x*7)%90); }
+  for (const h of fallingHazards) { h.falling = false; h.y = h.sourceY ?? -20; h.timer = 75 + ((h.x*7)%90); }
   player.x = respawnPoint.x; player.y = respawnPoint.y;
   player.vx = 0; player.vy = 0; player.jumps = 0; player.flipping = 0; player.dead = 0;
 }
@@ -893,6 +926,15 @@ function update() {
     }
     if (player.dead === 0) { deathAnim = null; resetPlayer(false); playerHP = 50; invuln = 60; fireballs = []; }
   } else {
+    // piattaforme mobili: trasportano John mentre ci sta sopra
+    for (const s of solids) if (s.type === 'moving') {
+      const oldX = s.x, oldY = s.y;
+      const wave = Math.sin(t * 0.018 + s.phase);
+      if (s.moving === 'x') s.x = s.x0 + wave * s.range;
+      else s.y = s.y0 + wave * s.range;
+      const standing = player.x + player.w > oldX && player.x < oldX + s.w && Math.abs((player.y + player.h) - oldY) < 7;
+      if (standing) { player.x += s.x - oldX; player.y += s.y - oldY; }
+    }
     // input orizzontale
     const accel = 0.9, maxSpd = 5.2, fric = FRIC;
     if (keys['ArrowLeft']) { player.vx -= accel; player.facing = -1; }
@@ -957,6 +999,7 @@ function update() {
 
     // lava
     for (const l of lava) if (rectsOverlap(player, l)) die();
+    for (const a of acidPools) if (rectsOverlap(player, a)) die();
 
     // piattaforme crepate e ponte che crolla progressivamente
     for (const s of solids) {
@@ -975,16 +1018,20 @@ function update() {
     for (const h of fallingHazards) {
       if (!h.falling) {
         h.timer--;
-        if (h.timer <= 0) { h.falling = true; h.y = camY - 30; h.vy = h.kind === 'acid' ? 8 : 7; }
+        if (h.timer <= 0) {
+          h.falling = true;
+          h.y = h.sourceY ?? (camY - 30);
+          h.vy = h.kind === 'acid' ? 8 : (h.kind === 'cone' ? 7 : 4.5);
+        }
       } else {
         h.y += h.vy; h.vy += 0.18;
-        const hit = h.kind === 'acid'
-          ? {x:h.x-7,y:h.y-10,w:14,h:22}
-          : {x:h.x-13,y:h.y-16,w:26,h:32};
+        const hit = h.kind === 'acid' ? {x:h.x-7,y:h.y-10,w:14,h:22}
+          : h.kind === 'cone' ? {x:h.x-13,y:h.y-16,w:26,h:32}
+          : {x:h.x-22,y:h.y-18,w:44,h:38};
         if (rectsOverlap(player, hit)) { die(); h.y = LEVEL_H + 100; }
         let landed = h.y > LEVEL_H + 40;
         for (const s of solids) if (!s.falling && h.x > s.x && h.x < s.x+s.w && h.y > s.y && h.y < s.y+s.h+12) { landed = true; break; }
-        if (landed) { boom(h.x, h.y, h.kind === 'acid' ? '#a8ff42' : '#ffd1e5'); h.falling = false; h.timer = 115 + ((h.x*7)%75); h.y = -20; }
+        if (landed) { boom(h.x, h.y, h.kind === 'acid' ? '#a8ff42' : '#ffd1e5'); h.falling = false; h.timer = 115 + ((h.x*7)%75); h.y = h.sourceY ?? -20; }
       }
     }
 
@@ -1369,6 +1416,24 @@ function draw() {
     ctx.fillStyle = '#8fd8ed'; ctx.fillRect(shopX+80,145,340,110);
     ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.fillRect(shopX+90,155,320,14);
     ctx.fillStyle = '#d477a3'; ctx.fillRect(shopX+55,255,390,28);
+  } else if (LEVELS[currentLevel].deco === 'home') {
+    const houseX = LEVEL_W * 0.39;
+    // cortile di John
+    ctx.fillStyle = '#5aa84f'; ctx.fillRect(0, LEVEL_H-175, houseX, 55);
+    for (let x=260; x<houseX-180; x+=460) {
+      ctx.fillStyle='#765038'; ctx.fillRect(x,LEVEL_H-260,16,95);
+      ctx.fillStyle='#4b9a48'; ctx.beginPath(); ctx.arc(x+8,LEVEL_H-275,48,0,7); ctx.fill();
+    }
+    // casa su due piani: salotto sotto, camera sopra
+    ctx.fillStyle='#f4dfc7'; ctx.fillRect(houseX,80,LEVEL_W-houseX,LEVEL_H-200);
+    ctx.fillStyle='#9d6548'; ctx.fillRect(houseX,80,LEVEL_W-houseX,20);
+    ctx.fillStyle='#c99172'; ctx.fillRect(houseX,LEVEL_H-360,LEVEL_W-houseX,18);
+    ctx.fillStyle='#734c3b'; ctx.font='bold 22px Trebuchet MS'; ctx.textAlign='left';
+    ctx.fillText('SALOTTO',houseX+45,LEVEL_H-155);
+    ctx.fillText('CAMERA DI JOHN',houseX+45,150);
+    // divano e letto
+    ctx.fillStyle='#4d80b8'; ctx.fillRect(houseX+170,LEVEL_H-250,170,62); ctx.fillRect(houseX+150,LEVEL_H-220,210,32);
+    ctx.fillStyle='#7ab6d8'; ctx.fillRect(houseX+1250,300,250,55); ctx.fillStyle='#eef6fc'; ctx.fillRect(houseX+1265,285,75,25);
   }
 
   // rocce
@@ -1396,6 +1461,10 @@ function draw() {
         ctx.strokeStyle = '#33251f'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(s.x+5,s.y+2); ctx.lineTo(s.x+18,s.y+8); ctx.lineTo(s.x+12,s.y+s.h); ctx.moveTo(s.x+27,s.y+2); ctx.lineTo(s.x+21,s.y+9); ctx.stroke();
       }
+      if (s.type === 'moving') {
+        ctx.fillStyle='#43e0d0'; ctx.font='bold 14px Trebuchet MS'; ctx.textAlign='center';
+        ctx.fillText(s.moving === 'x' ? '↔' : '↕',s.x+s.w/2,s.y-5);
+      }
     }
   }
 
@@ -1412,18 +1481,38 @@ function draw() {
     if ((t+l.x)%70 < 20) ctx.fillRect(l.x+l.w/2, l.y-8-((t+l.x)%20), 3, 5);
   }
 
+  // pozze di acido, visivamente diverse dalla lava
+  for (const a of acidPools) {
+    ctx.fillStyle='#76d928'; ctx.fillRect(a.x,a.y,a.w,a.h);
+    ctx.fillStyle='#caff5a';
+    for(let i=0;i<a.w;i+=9){const wob=Math.sin(t*0.1+(a.x+i)*0.25)*2;ctx.fillRect(a.x+i,a.y-3+wob,9,5);}
+    ctx.fillStyle='rgba(235,255,170,0.7)';
+    if((t+a.x)%60<18)ctx.beginPath(),ctx.arc(a.x+a.w/2,a.y-8-((t+a.x)%18),3,0,7),ctx.fill();
+  }
+
   // avvisi e oggetti cadenti: macchia per l'acido, ombra per i coni
   for (const h of fallingHazards) {
     if (!h.falling) {
       const pulse = 0.45 + Math.sin(t*0.18 + h.x)*0.25;
-      ctx.fillStyle = h.kind === 'acid' ? `rgba(145,255,45,${pulse})` : `rgba(30,20,20,${pulse})`;
-      ctx.beginPath(); ctx.ellipse(h.x, h.groundY-2, h.kind === 'acid' ? 17 : 14, 5, 0, 0, 7); ctx.fill();
+      if (h.kind === 'furniture') {
+        const shake = h.timer < 45 ? Math.sin(t*1.8)*3 : 0;
+        ctx.fillStyle='#744b35'; ctx.fillRect(h.x-22+shake,h.sourceY-18,44,38);
+        ctx.fillStyle='#d5ad75'; ctx.fillRect(h.x-15+shake,h.sourceY-11,12,10); ctx.fillRect(h.x+3+shake,h.sourceY-11,12,10);
+      } else {
+        ctx.fillStyle = h.kind === 'acid' ? `rgba(145,255,45,${pulse})` : `rgba(30,20,20,${pulse})`;
+        ctx.beginPath(); ctx.ellipse(h.x,h.groundY-2,h.kind === 'acid'?17:14,5,0,0,7); ctx.fill();
+        if(h.kind==='hanging'){ctx.fillStyle='#ffd9a8';ctx.beginPath();ctx.arc(h.x,h.sourceY,12,0,7);ctx.fill();ctx.strokeStyle='#4b3429';ctx.beginPath();ctx.moveTo(h.x,h.sourceY-12);ctx.lineTo(h.x,h.sourceY-35);ctx.stroke();}
+      }
     } else if (h.kind === 'acid') {
       ctx.fillStyle = '#a8ff42'; ctx.beginPath(); ctx.arc(h.x,h.y,8,0,7); ctx.fill();
       ctx.fillStyle = '#e8ff9a'; ctx.fillRect(h.x-2,h.y-12,4,9);
-    } else {
+    } else if (h.kind === 'cone') {
       ctx.fillStyle = '#f2b15f'; ctx.beginPath(); ctx.moveTo(h.x-12,h.y-12); ctx.lineTo(h.x+12,h.y-12); ctx.lineTo(h.x,h.y+17); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#ff9fc9'; ctx.beginPath(); ctx.arc(h.x,h.y-13,12,Math.PI,0); ctx.fill();
+    } else if (h.kind === 'furniture') {
+      ctx.fillStyle='#744b35';ctx.fillRect(h.x-22,h.y-18,44,38);ctx.fillStyle='#d5ad75';ctx.fillRect(h.x-15,h.y-11,12,10);ctx.fillRect(h.x+3,h.y-11,12,10);
+    } else {
+      ctx.fillStyle='#ffd9a8';ctx.beginPath();ctx.arc(h.x,h.y,13,0,7);ctx.fill();ctx.strokeStyle='#4b3429';ctx.beginPath();ctx.moveTo(h.x,h.y-13);ctx.lineTo(h.x,h.y-32);ctx.stroke();
     }
   }
 
