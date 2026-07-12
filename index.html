@@ -982,7 +982,7 @@ function update() {
           // piattaforma: solo da sopra e scendendo
           if (player.vy > 0 && player.y + player.h - player.vy <= s.y + 4) {
             player.y = s.y - player.h; player.vy = 0; player.onGround = true; player.jumps = 0;
-            if (s.type === 'fragile' && s.timer === 0) s.timer = 60;
+            if (s.type === 'fragile' && s.timer === 0) s.timer = 120;
           }
         } else {
           if (player.vy > 0) { player.y = s.y - player.h; player.onGround = true; player.jumps = 0; }
@@ -1009,7 +1009,7 @@ function update() {
       }
       if (s.bridge && !s.falling && player.x > s.x + TILE * 2) {
         s.timer++;
-        if (s.timer > 35) { s.falling = true; s.vy = 1; boom(s.x + s.w/2, s.y, '#d8b08a'); }
+        if (s.timer > 120) { s.falling = true; s.vy = 1; boom(s.x + s.w/2, s.y, '#d8b08a'); }
       }
       if (s.falling) { s.vy += 0.45; s.y += s.vy; }
     }
