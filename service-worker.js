@@ -1,4 +1,4 @@
-const CACHE_NAME = 'la-miniera-perduta-v10';
+const CACHE_NAME = 'la-miniera-perduta-v11';
 const ESSENTIAL_FILES = [
   './',
   './index.html',
@@ -6,7 +6,17 @@ const ESSENTIAL_FILES = [
   './favicon.png',
   './apple-touch-icon.png',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './quiz/parigi.jpg',
+  './quiz/new-york.jpg',
+  './quiz/londra.jpg',
+  './quiz/mosca.jpg',
+  './quiz/roma.jpg',
+  './quiz/cairo.jpg',
+  './quiz/shanghai.jpg',
+  './quiz/tokyo.jpg',
+  './quiz/isola-di-pasqua.jpg',
+  './quiz/chichen-itza.jpg'
 ];
 
 function fetchWithTimeout(request, timeoutMs = 3000) {
