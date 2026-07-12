@@ -1,0 +1,27 @@
+{
+  "name": "La Miniera Perduta",
+  "short_name": "La Miniera",
+  "description": "Un'avventura nella miniera, giocabile anche offline.",
+  "lang": "it",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#14100e",
+  "theme_color": "#2b2320",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
