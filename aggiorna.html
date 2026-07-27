@@ -15,7 +15,7 @@
   <main>
     <div class="gem">💎</div>
     <h1>Aggiornamento del gioco…</h1>
-    <p>Sto caricando la versione con 30 livelli.</p>
+    <p>Sto caricando la versione con 40 livelli.</p>
   </main>
   <script>
     (async () => {
@@ -27,8 +27,8 @@
         const names = await caches.keys();
         await Promise.all(names.filter(name => name.startsWith('la-miniera-perduta-')).map(name => caches.delete(name)));
       }
-      location.replace('./?versione=30&aggiornamento=20260712-citta');
-    })().catch(() => location.replace('./?versione=30&aggiornamento=20260712-citta'));
+      location.replace('./?versione=40&aggiornamento=20260727-bussola');
+    })().catch(() => location.replace('./?versione=40&aggiornamento=20260727-bussola'));
   </script>
 </body>
 </html>

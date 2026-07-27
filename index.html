@@ -193,8 +193,8 @@
 
   <div id="overlay">
     <h1>LA MINIERA PERDUTA</h1>
-    <div class="sub">L'avventura di John · 30 livelli · il viaggio intorno al mondo</div>
-    <p><b style="color:var(--hero)">John</b> era un minatore molto bravo. Un giorno un amico gli parlò di una miniera leggendaria — <b>LA MINIERA PERDUTA</b> — che nasconde un tesoro difficilissimo da prendere. John partì per trovarla. Lo aspettano <b>30 livelli</b> di prove, boss, città lontane... e qualcosa di più prezioso del tesoro.</p>
+    <div class="sub">L'avventura di John · 40 livelli · il viaggio della bussola</div>
+    <p><b style="color:var(--hero)">John</b> era un minatore molto bravo. Un giorno un amico gli parlò di una miniera leggendaria — <b>LA MINIERA PERDUTA</b> — che nasconde un tesoro difficilissimo da prendere. John partì per trovarla. Lo aspettano <b>40 livelli</b> di prove, boss, città lontane... e una bussola che indica un ultimo mistero.</p>
     <div class="keys" id="keysInfo">
       <div><kbd>←</kbd> <kbd>→</kbd> muoviti</div>
       <div><kbd>Spazio</kbd> salta &nbsp;·&nbsp; <kbd>Spazio</kbd> di nuovo a mezz'aria = <b style="color:var(--hero)">capriola</b> (salto lungo!)</div>
@@ -210,6 +210,18 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
+const BACKGROUND_IMAGES = {};
+for (const [key,src] of Object.entries({
+  coral:'./backgrounds/barriera-corallina.png',
+  openSea:'./backgrounds/mare-aperto.png',
+  abyss:'./backgrounds/abisso-blu.png',
+  stormSea:'./backgrounds/tempesta-oceanica.png',
+  jungle:'./backgrounds/cielo-giungla.png'
+})) {
+  const img = new Image();
+  img.src = src;
+  BACKGROUND_IMAGES[key] = img;
+}
 
 // ---- Livello: griglia di tile da 40px ----
 // Legenda: # roccia, = piattaforma, ^ lava, C checkpoint, L leva, G portone, F traguardo, o gemma, . vuoto
@@ -218,7 +230,7 @@ function levelMap(rows) {
   const width = Math.max(...rows.map(row => row.length));
   return rows.map(row => row.slice(0, -1).padEnd(width - 1, '.') + '#');
 }
-function cityMap(finalGuardian=false) {
+function cityMapHorizontal(finalGuardian=false) {
   const width=190, height=18;
   const rows=Array.from({length:height},()=>Array(width).fill('.'));
   for(let r=0;r<height;r++){rows[r][0]='#';rows[r][width-1]='#';}
@@ -236,13 +248,130 @@ function cityMap(finalGuardian=false) {
   else{rows[14][180]='Q';rows[14][185]='G';rows[14][187]='F';}
   return rows.map(row=>row.join(''));
 }
-function cityLevel(cityName, day, monuments, quiz, finalGuardian=false) {
+
+function cityMapDiagonal(finalGuardian=false) {
+  const width=146, height=32;
+  const rows=Array.from({length:height},()=>Array(width).fill('.'));
+  const floorAt=c=>27-Math.min(20,Math.floor(c/6));
+  for(let r=0;r<height;r++){rows[r][0]='#';rows[r][width-1]='#';}
+  for(let c=1;c<width-1;c++)for(let r=floorAt(c);r<height;r++)rows[r][c]='#';
+  rows[floorAt(2)-1][2]='P';rows[floorAt(5)-1][5]='s';
+  [18,39,63,88,112].forEach((c,i)=>{
+    const f=floorAt(c), enemyCol=c+7, enemyFloor=floorAt(enemyCol);
+    rows[f-1][c]='C';rows[enemyFloor-1][enemyCol]='E';rows[f-3][c+2]='o';
+    for(let k=0;k<5;k++)rows[f-2][c+k]='=';
+    if(i%2===1)rows[floorAt(c+8)][c+8]=i%4===1?'a':'^';
+  });
+  [28,52,76,101,124].forEach((c,i)=>{const f=floorAt(c);rows[Math.max(1,f-7)][c]=i%2?'t':'A';});
+  const top=floorAt(width-12)-1;
+  if(finalGuardian){rows[top][width-18]='Q';rows[top][width-8]='z';}
+  else{rows[top][width-13]='Q';rows[top][width-8]='G';rows[top][width-4]='F';}
+  return rows.map(row=>row.join(''));
+}
+
+function cityMapVertical(finalGuardian=false) {
+  const width=42, height=72;
+  const rows=Array.from({length:height},()=>Array(width).fill('.'));
+  for(let r=0;r<height;r++){rows[r][0]='#';rows[r][width-1]='#';}
+  rows[69].fill('#');rows[70].fill('#');rows[71].fill('#');
+  rows[68][2]='P';rows[68][5]='s';
+  let step=0;
+  for(let r=66;r>=7;r-=3,step++){
+    const left=step%2===0?2:13, right=step%2===0?29:40;
+    for(let c=left;c<right;c++)rows[r][c]=step>12&&step%3===0?'R':'=';
+    const mid=Math.floor((left+right)/2);
+    rows[r-1][mid]='o';
+    if(step%3===1)rows[r-1][left+3]='E';
+    if(step%4===2)rows[r-1][right-4]='C';
+    if(step%2===0&&r>10)rows[r-2][21]='g';
+  }
+  // Piattaforma finale attraversabile dal basso: una parete piena
+  // impedirebbe di raggiungere quiz e uscita nei livelli verticali.
+  for(let c=13;c<29;c++)rows[7][c]='=';
+  for(let c=1;c<width-1;c++)rows[5][c]='=';
+  [14,26,38,50].forEach((r,i)=>rows[r][i%2?34:7]=i%2?'U':'t');
+  if(finalGuardian){rows[4][6]='Q';rows[4][30]='z';}
+  else{rows[4][22]='Q';rows[4][32]='G';rows[4][37]='F';}
+  return rows.map(row=>row.join(''));
+}
+
+function cityMap(layout,finalGuardian=false) {
+  if(layout==='diagonal') return cityMapDiagonal(finalGuardian);
+  if(layout==='vertical') return cityMapVertical(finalGuardian);
+  return cityMapHorizontal(finalGuardian);
+}
+
+function cityLevel(cityName, day, monuments, quiz, layout='horizontal', finalGuardian=false) {
   return {
-    name:cityName, sub:'esplora la città, supera le trappole e riconosci il monumento!', fric:0.75, deco:'worldCity', cityName, monuments, cityQuiz:quiz, finalGuardian,
+    name:cityName, sub:'esplora la città, supera le trappole e riconosci il monumento!', fric:0.75, deco:'worldCity', cityName, monuments, cityQuiz:quiz, cityLayout:layout, finalGuardian,
     theme:{sky:true,day,bgTop:day?'#78bce8':'#101b42',bgBot:day?'#f2d5ad':'#374b78',glow:day?'rgba(255,210,100,0.10)':'rgba(80,130,255,0.14)',rock:'#6f665d',rockLight:'#a99b88',rockDark:'#3e3934',plat:'#6d7f8f',platLight:'#a9c0cf',platDark:'#3e4b55',haz:'#ff4b16',hazTop:'#ffc13b',gem:'#43e0d0'},
-    map:cityMap(finalGuardian)
+    map:cityMap(layout,finalGuardian)
   };
 }
+
+function compassMap(stage, hazard='^', overhead='', enemyChar='E', vines=false) {
+  const width = 128 + stage * 3, height = 24;
+  const rows = Array.from({length:height},()=>Array(width).fill('.'));
+  for (let r=0;r<height;r++) { rows[r][0]='#'; rows[r][width-1]='#'; }
+  for(let r=15;r<height;r++)rows[r].fill('#');
+  rows[14][2]='P';
+
+  const gaps=[17,35,54,75,96,114].filter(c=>c<width-12);
+  gaps.forEach((start,i)=>{
+    const len=2+((stage+i)%3);
+    for(let c=start;c<Math.min(width-8,start+len);c++) rows[15][c]=hazard;
+    const px=Math.max(4,start-1);
+    for(let c=px;c<Math.min(width-4,px+len+2);c++) rows[12-(i%2)*2][c]=(stage>=6&&i%3===1)?'R':'=';
+    rows[11-(i%2)*2][px+1]='o';
+  });
+
+  [27,64,103].filter(c=>c<width-18).forEach(c=>rows[14][c]='C');
+  [12,29,47,68,88,108,124].filter(c=>c<width-20&&!gaps.some(g=>Math.abs(g-c)<5)).forEach((c,i)=>{
+    rows[14][c]=i%3===2?'H':enemyChar;
+  });
+  [22,43,82,119].filter(c=>c<width-15).forEach((c,i)=>{
+    const r=i%2===0?8:10;
+    for(let k=0;k<4;k++) rows[r+1][c+k]='=';
+    rows[r][c+1]='o';
+    if(vines) for(let rr=r+2;rr<=14;rr++) rows[rr][c+2]='l';
+  });
+  if(overhead) [31,58,91,116].filter(c=>c<width-10).forEach(c=>rows[2][c]=overhead);
+  if(stage>=4) [49,86].filter(c=>c<width-18).forEach(c=>rows[12][c]='M');
+  if(stage>=7) [38,72,106].filter(c=>c<width-18).forEach(c=>rows[14][c]='E');
+
+  // Ingresso nascosto: il terreno fragile cede e porta a un tunnel
+  // nel fondale o sottoterra. Nessuna leva e nessun portone.
+  const shaft=width-30;
+  for(let r=15;r<=20;r++)for(let c=shaft;c<shaft+4;c++)rows[r][c]='.';
+  for(let r=18;r<=20;r++)for(let c=shaft;c<width-1;c++)rows[r][c]='.';
+  for(let c=shaft;c<shaft+4;c++)rows[15][c]='R';
+  for(let r=12;r<=14;r++)rows[r][shaft+5]='#';
+  rows[20][width-18]='p';
+  for(let r=18;r<=20;r++)rows[r][width-12]='h';
+  if(stage===3)rows[20][width-8]='5';
+  rows[20][width-4]='F';
+  if(stage===9){
+    rows[20][width-28]='C';
+    rows[20][width-24]='X';
+  }
+  return rows.map(row=>row.join(''));
+}
+
+function compassLevel(name, sub, stage, palette, hazard='^', overhead='', enemyChar='E', backgroundImage=null) {
+  const themes={
+    ocean:{bgTop:'#0b6f9d',bgBot:'#052e4c',glow:'rgba(70,220,255,.18)',rock:'#356f78',rockLight:'#5aa3a5',rockDark:'#214752',plat:'#4c9298',platLight:'#7bc4bd',platDark:'#285d68',haz:'#087bb5',hazTop:'#5de1ff',gem:'#ffd24a'},
+    forest:{bgTop:'#10291f',bgBot:'#07130e',glow:'rgba(80,255,160,.12)',rock:'#315443',rockLight:'#4f7962',rockDark:'#1d3428',plat:'#557e62',platLight:'#79a887',platDark:'#304b38',haz:'#9ad83f',hazTop:'#d9ff72',gem:'#ffd24a'},
+    jungle:{bgTop:'#173d20',bgBot:'#071b0c',glow:'rgba(95,255,100,.14)',rock:'#385c38',rockLight:'#5f8954',rockDark:'#203720',plat:'#52794b',platLight:'#80aa70',platDark:'#30472d',haz:'#75b52b',hazTop:'#c7ef56',gem:'#ffd24a'},
+    canyon:{bgTop:'#4a2116',bgBot:'#1b0b08',glow:'rgba(255,145,65,.18)',rock:'#75412d',rockLight:'#9b6042',rockDark:'#422318',plat:'#8c5134',platLight:'#bb7951',platDark:'#522e20',haz:'#ff4b16',hazTop:'#ffc13b',gem:'#43e0d0'},
+    ice:{bgTop:'#132a3b',bgBot:'#07121c',glow:'rgba(100,210,255,.17)',rock:'#36586c',rockLight:'#5d8298',rockDark:'#203745',plat:'#527b92',platLight:'#82acc2',platDark:'#304b5d',haz:'#35a9df',hazTop:'#c9f3ff',gem:'#ffd24a'},
+    night:{bgTop:'#101426',bgBot:'#050711',glow:'rgba(105,120,255,.15)',rock:'#343750',rockLight:'#555a78',rockDark:'#202235',plat:'#4d5274',platLight:'#747aa0',platDark:'#2c304b',haz:'#a438d0',hazTop:'#ed8cff',gem:'#43e0d0'},
+    gold:{bgTop:'#30250d',bgBot:'#110d05',glow:'rgba(255,205,60,.18)',rock:'#625124',rockLight:'#8b7437',rockDark:'#3a2f15',plat:'#80692f',platLight:'#ac914d',platDark:'#4b3c1d',haz:'#ff5a1f',hazTop:'#ffd24a',gem:'#43e0d0'}
+  };
+  const deco=palette==='ocean'?'ocean':(palette==='forest'?'mushroom':(palette==='jungle'?'park':(palette==='ice'?'ice':(palette==='night'?'dark':(palette==='canyon'?'embers':'gold')))));
+  const vines=palette==='forest'||palette==='jungle';
+  return {name,sub,fric:palette==='ice'?0.9:0.75,deco,backgroundImage:backgroundImage||(vines?'jungle':null),compassTrail:true,secretPassage:true,finalSecretGuardian:stage===9,wind:false,theme:themes[palette],map:compassMap(stage,hazard,overhead,enemyChar,vines)};
+}
+
 const LEVELS = [
 { name: "La Miniera Perduta", sub: "grotta di lava", fric: 0.75, deco:'mine',
   theme: { bgTop:'#241813', bgBot:'#100a08', glow:'rgba(255,90,31,0.18)',
@@ -721,17 +850,28 @@ const LEVELS = [
     "########^^^^^^^^^^^^^^^^^^###############################################################################################################################",
     "#########################################################################################################################################################"
   ]) },
-cityLevel('Parigi',true,['Torre Eiffel','Arco di Trionfo','Notre-Dame'],{image:'quiz/parigi.jpg',q:'Quale monumento di Parigi vedi nell’immagine?',a:['Torre Eiffel','Louvre','Arco di Trionfo','Notre-Dame'],ok:0}),
-cityLevel('New York',false,['Statua della Libertà','Empire State Building','Ponte di Brooklyn'],{image:'quiz/new-york.jpg',q:'Quale monumento di New York vedi nell’immagine?',a:['Empire State Building','Statua della Libertà','Ponte di Brooklyn','One World Trade Center'],ok:1}),
-cityLevel('Londra',true,['Elizabeth Tower (Big Ben)','Tower Bridge','London Eye'],{image:'quiz/londra.jpg',q:'Quale celebre torre di Londra vedi nell’immagine?',a:['Tower Bridge','London Eye','Elizabeth Tower (Big Ben)','The Shard'],ok:2}),
-cityLevel('Mosca',false,['Cattedrale di San Basilio','Cremlino','Torre Spasskaya'],{image:'quiz/mosca.jpg',q:'Quale monumento di Mosca vedi nell’immagine?',a:['Cremlino','Cattedrale di San Basilio','Teatro Bolshoi','Torre Ostankino'],ok:1}),
-cityLevel('Roma',true,['Colosseo','Fontana di Trevi','Cupola di San Pietro'],{image:'quiz/roma.jpg',q:'Quale monumento di Roma vedi nell’immagine?',a:['Pantheon','Fontana di Trevi','Colosseo','Castel Sant’Angelo'],ok:2}),
-cityLevel('Il Cairo',false,['Piramidi di Giza','Grande Sfinge','Torre del Cairo'],{image:'quiz/cairo.jpg',q:'Quale monumento vicino al Cairo è in primo piano?',a:['Grande Sfinge di Giza','Piramide di Cheope','Torre del Cairo','Tempio di Luxor'],ok:0}),
-cityLevel('Shanghai',true,['Oriental Pearl Tower','Shanghai Tower','Bund'],{image:'quiz/shanghai.jpg',q:'Quale torre di Shanghai vedi al centro?',a:['Shanghai Tower','Jin Mao Tower','Oriental Pearl Tower','Tokyo Skytree'],ok:2}),
-cityLevel('Tokyo',false,['Tokyo Skytree','Tokyo Tower','Tempio Sensō-ji'],{image:'quiz/tokyo.jpg',q:'Quale torre di Tokyo vedi nell’immagine?',a:['Tokyo Tower','Tokyo Skytree','Torre di Kyoto','Mode Gakuen Cocoon Tower'],ok:1}),
-cityLevel('Isola di Pasqua',true,['Moai di Ahu Tongariki','Rano Raraku','Ahu Akivi'],{image:'quiz/isola-di-pasqua.jpg',q:'Come si chiamano le grandi statue dell’Isola di Pasqua?',a:['Totem','Moai','Menhir','Obelischi'],ok:1}),
-cityLevel('Chichén Itzá',false,['El Castillo','Tempio dei Guerrieri','Grande Campo da Gioco della Palla'],{image:'quiz/chichen-itza.jpg',q:'Come si chiama la celebre piramide di Chichén Itzá?',a:['El Castillo','Piramide del Sole','Piramide di Cheope','Tempio di Kukulcan a Tikal'],ok:0},true)
+cityLevel('Parigi',true,['Torre Eiffel','Arco di Trionfo','Notre-Dame'],{image:'quiz/parigi.jpg',q:'Quale monumento di Parigi vedi nell’immagine?',a:['Torre Eiffel','Louvre','Arco di Trionfo','Notre-Dame'],ok:0},'horizontal'),
+cityLevel('New York',false,['Statua della Libertà','Empire State Building','Ponte di Brooklyn'],{image:'quiz/new-york.jpg',q:'Quale monumento di New York vedi nell’immagine?',a:['Empire State Building','Statua della Libertà','Ponte di Brooklyn','One World Trade Center'],ok:1},'horizontal'),
+cityLevel('Londra',true,['Elizabeth Tower (Big Ben)','Tower Bridge','London Eye'],{image:'quiz/londra.jpg',q:'Quale celebre torre di Londra vedi nell’immagine?',a:['Tower Bridge','London Eye','Elizabeth Tower (Big Ben)','The Shard'],ok:2},'diagonal'),
+cityLevel('Mosca',false,['Cattedrale di San Basilio','Cremlino','Torre Spasskaya'],{image:'quiz/mosca.jpg',q:'Quale monumento di Mosca vedi nell’immagine?',a:['Cremlino','Cattedrale di San Basilio','Teatro Bolshoi','Torre Ostankino'],ok:1},'diagonal'),
+cityLevel('Roma',true,['Colosseo','Fontana di Trevi','Cupola di San Pietro'],{image:'quiz/roma.jpg',q:'Quale monumento di Roma vedi nell’immagine?',a:['Pantheon','Fontana di Trevi','Colosseo','Castel Sant’Angelo'],ok:2},'diagonal'),
+cityLevel('Il Cairo',false,['Piramidi di Giza','Grande Sfinge','Torre del Cairo'],{image:'quiz/cairo.jpg',q:'Quale monumento vicino al Cairo è in primo piano?',a:['Grande Sfinge di Giza','Piramide di Cheope','Torre del Cairo','Tempio di Luxor'],ok:0},'diagonal'),
+cityLevel('Shanghai',true,['Oriental Pearl Tower','Shanghai Tower','Bund'],{image:'quiz/shanghai.jpg',q:'Quale torre di Shanghai vedi al centro?',a:['Shanghai Tower','Jin Mao Tower','Oriental Pearl Tower','Tokyo Skytree'],ok:2},'vertical'),
+cityLevel('Tokyo',false,['Tokyo Skytree','Tokyo Tower','Tempio Sensō-ji'],{image:'quiz/tokyo.jpg',q:'Quale torre di Tokyo vedi nell’immagine?',a:['Tokyo Tower','Tokyo Skytree','Torre di Kyoto','Mode Gakuen Cocoon Tower'],ok:1},'vertical'),
+cityLevel('Isola di Pasqua',true,['Moai di Ahu Tongariki','Rano Raraku','Ahu Akivi'],{image:'quiz/isola-di-pasqua.jpg',q:'Come si chiamano le grandi statue dell’Isola di Pasqua?',a:['Totem','Moai','Menhir','Obelischi'],ok:1},'vertical'),
+cityLevel('Chichén Itzá',false,['El Castillo','Tempio dei Guerrieri','Grande Campo da Gioco della Palla'],{image:'quiz/chichen-itza.jpg',q:'Come si chiama la celebre piramide di Chichén Itzá?',a:['El Castillo','Piramide del Sole','Piramide di Cheope','Tempio di Kukulcan a Tikal'],ok:0},'vertical',true),
+compassLevel('Il Mare della Bussola','ATTO TRE · l’ago indica una rotta sotto le onde',0,'ocean','^','','k','coral'),
+compassLevel('La Foresta delle Corde','scala gli alberi usando le corde verdi',6,'forest','a'),
+compassLevel('Il Relitto degli Squali','la bussola attraversa una nave sommersa infestata',2,'ocean','^','','k','coral'),
+compassLevel('Il Mare Aperto','attraversa il fondale sabbioso e non farti sorprendere dagli squali',1,'ocean','^','','k','openSea'),
+compassLevel('La Giungla delle Liane','la bussola si arrampica nel cuore della vegetazione',7,'jungle','a'),
+compassLevel('L’Abisso Blu','più il fondale diventa oscuro, più gli squali sono affamati',3,'ocean','^','','k','abyss'),
+compassLevel('Le Caverne Sommerse','segui le bolle tra rocce, correnti e pinne in agguato',4,'ocean','^','','k','coral'),
+compassLevel('Il Tempio Verde','corde e alberi nascondono la strada verso lo scrigno',8,'jungle','a'),
+compassLevel('La Tempesta Oceanica','l’ultima rotta marina è sorvegliata da un branco di squali',5,'ocean','^','','k','stormSea'),
+compassLevel('Il Cuore della Giungla','scala l’ultimo albero, sconfiggi il guardiano e raggiungi lo scrigno',9,'jungle','a')
 ];
+
 let currentLevel = 0;
 let MAP = LEVELS[0].map, ROWS = MAP.length, COLS = MAP[0].length, LEVEL_W = COLS*TILE, LEVEL_H = ROWS*TILE;
 let THEME = LEVELS[0].theme, FRIC = LEVELS[0].fric;
@@ -747,17 +887,18 @@ let bushes = [], pools = [];
 let snowSpawners = [], snowballs = [];
 let acidPools = [];
 let fallingHazards = [], bouncePads = [];
-let photocopiers = [], papers = [], grappleAnchors = [];
-let secretDoor = null, officeButton = null, officeButtons = [], grappleItem = null, hammerItem = null, armorItem = null, quizTrigger = null;
+let photocopiers = [], papers = [], grappleAnchors = [], greenRopes = [];
+let secretDoor = null, secretPassageTrigger = null, secretPassageFound = false, officeButton = null, officeButtons = [], grappleItem = null, hammerItem = null, freezeGunItem = null, armorItem = null, quizTrigger = null;
 let citySign = null, cityQuizTrigger = null;
 let grappleOwned = false, officeButtonPressed = false, quizCompleted = false, armorReady = false, armorActive = 0;
 let grappleCooldown = 0;
 let bossAcidWarnings = [], bossAcidPools = [];
 let wind = { cyc: 0, dir: 1 };
 let windPhase = 0, windDir = 1;
-let weapons = { spada:false, pistola:false, suprema:false, martello:false };
+let weapons = { spada:false, pistola:false, suprema:false, martello:false, gelatore:false };
 let activeWeapon = null;
-const WEAPON_INFO = { spada:{icon:'\ud83d\udde1\ufe0f',nome:'SPADA',dmg:10}, pistola:{icon:'\ud83d\udd2b',nome:'PISTOLA',dmg:50}, suprema:{icon:'\u2694\ufe0f',nome:'SPADA SUPREMA',dmg:100}, martello:{icon:'\ud83d\udd28',nome:'MARTELLO DEL TERREMOTO',dmg:50} };
+let freezeShotCooldown = 0;
+const WEAPON_INFO = { spada:{icon:'\ud83d\udde1\ufe0f',nome:'SPADA',dmg:10}, pistola:{icon:'\ud83d\udd2b',nome:'PISTOLA',dmg:50}, suprema:{icon:'\u2694\ufe0f',nome:'SPADA SUPREMA',dmg:100}, martello:{icon:'\ud83d\udd28',nome:'MARTELLO DEL TERREMOTO',dmg:50}, gelatore:{icon:'\u2744\ufe0f',nome:'RAGGIO GELANTE',dmg:0} };
 function useCape() {
   if (!capeOwned || capeUses <= 0 || capeActive > 0 || state !== 'play') return;
   capeUses--; capeActive = 300;
@@ -769,7 +910,7 @@ function updateCapeBtn() {
   b.style.display = (capeOwned && capeUses > 0) ? 'flex' : 'none';
   b.textContent = '\ud83e\udde3' + capeUses;
 }
-function ownedWeapons(){ return ['spada','pistola','suprema','martello'].filter(w=>weapons[w]); }
+function ownedWeapons(){ return ['spada','pistola','suprema','martello','gelatore'].filter(w=>weapons[w]); }
 function cycleWeapon(){
   const own = ownedWeapons();
   if (own.length < 2) return;
@@ -788,13 +929,14 @@ function buildLevel() {
   solids = []; lava = []; acidPools = []; gems = []; checkpoints = [];
   lever = null; gate = null; finish = null;
   enemies = []; buttons = []; bullets = []; fireballs = []; floatTexts = []; boss = null; hearts = [];
-  decos = []; ambient = []; doggy = null; chest = null; cape = null; droppers = []; vases = []; bushes = []; pools = []; snowSpawners = []; snowballs = []; fallingHazards = []; bouncePads = []; photocopiers = []; papers = []; grappleAnchors = []; bossAcidWarnings = []; bossAcidPools = [];
-  secretDoor = null; officeButton = null; officeButtons = []; grappleItem = null; hammerItem = null; armorItem = null; quizTrigger = null; citySign = null; cityQuizTrigger = null; officeButtonPressed = false; quizCompleted = false; armorReady = false; armorActive = 0;
+  decos = []; ambient = []; doggy = null; chest = null; cape = null; droppers = []; vases = []; bushes = []; pools = []; snowSpawners = []; snowballs = []; fallingHazards = []; bouncePads = []; photocopiers = []; papers = []; grappleAnchors = []; greenRopes = []; bossAcidWarnings = []; bossAcidPools = [];
+  secretDoor = null; secretPassageTrigger = null; secretPassageFound = false; officeButton = null; officeButtons = []; grappleItem = null; hammerItem = null; freezeGunItem = null; armorItem = null; quizTrigger = null; citySign = null; cityQuizTrigger = null; officeButtonPressed = false; quizCompleted = false; armorReady = false; armorActive = 0;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const ch = MAP[r][c];
       const x = c*TILE, y = r*TILE;
       if (ch === '#') solids.push({x,y,w:TILE,h:TILE,type:'rock'});
+      else if (ch === 'h') solids.push({x,y,w:TILE,h:TILE,type:'rock',hiddenPassage:true});
       else if (ch === '=') solids.push({x,y:y+TILE*0.35,w:TILE,h:TILE*0.3,type:'plat',oneWay:true});
       else if (ch === 'K') solids.push({x,y:y+TILE*0.35,w:TILE,h:TILE*0.3,type:'cone',oneWay:true});
       else if (ch === 'R') solids.push({x,y:y+TILE*0.35,y0:y+TILE*0.35,w:TILE,h:TILE*0.3,type:'fragile',oneWay:true,cracked:true,timer:0,falling:false,vy:0});
@@ -810,6 +952,7 @@ function buildLevel() {
       else if (ch === 'G') gate = {x,y:y-TILE,w:TILE,h:TILE*2};
       else if (ch === 'F') finish = {x:x+4,y:y-TILE,w:TILE-8,h:TILE*2};
       else if (ch === 'E') enemies.push({x:x+4,y:y+6,w:32,h:34,dir:1,spd:1.1,hp:20,alive:true,minX:0,maxX:0,r,c,x0:x+4,respawnT:0});
+      else if (ch === 'k') enemies.push({x:x-7,y:y+9,w:54,h:27,dir:1,spd:1.65,hp:40,maxHp:40,alive:true,minX:0,maxX:0,r,c,x0:x-7,respawnT:0,shark:true});
       else if (ch === '1') buttons.push({x:x+4,y:y+14,w:32,h:26,weapon:'spada',label:'SPADA',pressed:false});
       else if (ch === '2') buttons.push({x:x+4,y:y+14,w:32,h:26,weapon:'pistola',label:'PISTOLA',pressed:false});
       else if (ch === '3') buttons.push({x:x+4,y:y+14,w:32,h:26,weapon:'suprema',label:'???',pressed:false});
@@ -826,16 +969,27 @@ function buildLevel() {
       else if (ch === 'b') { const bt={x:x+8,y:y+22,w:24,h:16,pressed:false}; officeButtons.push(bt); officeButton=bt; }
       else if (ch === 'r') grappleItem = {x:x+8,y:y+4,w:26,h:32,taken:grappleOwned};
       else if (ch === 'g') grappleAnchors.push({x:x+TILE/2,y:y+TILE/2});
+      else if (ch === 'l') greenRopes.push({x:x+TILE/2-5,y,w:10,h:TILE});
       else if (ch === 'U') fallingHazards.push({x:x+TILE/2,kind:'water',timer:60+((c*47)%140),y:-20,falling:false});
       else if (ch === 't') fallingHazards.push({x:x+TILE/2,kind:'brick',timer:80+((c*31)%150),y:-20,falling:false});
-      else if (ch === 'x') enemies.push({x:x+2,y:y-18,w:38,h:58,dir:1,spd:1.4,hp:300,maxHp:300,alive:true,minX:x-120,maxX:x+120,r,c,x0:x+2,respawnT:0,elite:true,miniBoss:true});
+      else if (ch === 'x') {
+        const secretGuardian = !!LV.finalSecretGuardian;
+        const guardianHp = secretGuardian ? 500 : 300;
+        enemies.push({x:x+2,y:y-18,w:38,h:58,dir:1,spd:secretGuardian?1.65:1.4,hp:guardianHp,maxHp:guardianHp,alive:true,minX:x-120,maxX:x+120,r,c,x0:x+2,respawnT:0,elite:true,miniBoss:true,secretGuardian});
+      }
       else if (ch === 'W') hammerItem = {x:x+6,y:y+2,w:30,h:34,taken:weapons.martello};
+      else if (ch === '5') freezeGunItem = {x:x+4,y:y+5,w:34,h:28,taken:weapons.gelatore};
       else if (ch === '4') armorItem = {x:x+7,y:y+2,w:28,h:34,taken:false};
       else if (ch === 'q') quizTrigger = {x:x-10,y:y-50,w:TILE+20,h:TILE*2};
       else if (ch === 'Q') cityQuizTrigger = {x:x-10,y:y-50,w:TILE+20,h:TILE*2};
       else if (ch === 's') citySign = {x:x+4,y:y-32,w:120,h:70};
+      else if (ch === 'p') secretPassageTrigger = {x:x-8,y:y-8,w:TILE+16,h:TILE+16};
       else if (ch === 'S') snowSpawners.push({x:x+TILE/2, y:y+TILE/2, timer: 120 + ((r*53+c*29) % 160)});
-      else if (ch === 'X') boss = {x:x-40,y:y-56,w:76,h:96,hp:1000,maxHp:1000,dir:-1,t:0,alive:true,hit:0};
+      else if (ch === 'X') {
+        const secretFinal = !!LV.finalSecretGuardian;
+        boss = {x:x-40,y:y-56,yBase:y-56,w:76,h:96,hp:1000,maxHp:1000,dir:-1,t:0,alive:true,hit:0,secretFinal};
+        if(secretFinal){boss.arenaMin=x-250;boss.arenaMax=x+110;}
+      }
       else if (ch === 'Z') boss = {x:x-46,y:y-70,yBase:y-70,w:92,h:112,hp:2000,maxHp:2000,dir:-1,t:0,alive:true,hit:0,final:true,quizDone:false,attackKind:'fire',arenaMin:x-340,arenaMax:x+170};
       else if (ch === 'z') boss = {x:x-50,y:y-82,yBase:y-82,w:100,h:124,hp:3000,maxHp:3000,dir:-1,t:0,alive:true,hit:0,final:true,cityFinal:true,quizDone:false,attackKind:'fire',arenaMin:x-420,arenaMax:x+180};
     }
@@ -953,6 +1107,12 @@ if (isTouch) {
 }
 
 function doJump() {
+  const rope = greenRopes.find(r=>rectsOverlap(player,{x:r.x-10,y:r.y,w:r.w+20,h:r.h}));
+  if (rope) {
+    player.vy = -7; player.vx *= 0.35; player.jumps = 0; player.onGround = false;
+    floatTexts.push({t:'CORDA VERDE!',x:rope.x,y:player.y-10,life:0.45});
+    return;
+  }
   if (player.jumps === 0 && player.onGround) {
     player.vy = -12.5; player.jumps = 1; player.onGround = false;
   } else if (player.jumps === 1) {
@@ -970,10 +1130,17 @@ function doJump() {
 
 function doAttack() {
   if (state !== 'play' || player.dead > 0 || atkCd > 0) return;
-  if (!weapons.spada && !weapons.pistola && !weapons.suprema && !weapons.martello) return;
+  if (!weapons.spada && !weapons.pistola && !weapons.suprema && !weapons.martello && !weapons.gelatore) return;
+  if (activeWeapon === 'gelatore' && freezeShotCooldown > 0) {
+    floatTexts.push({t:'RAGGIO IN RICARICA: '+Math.ceil(freezeShotCooldown/60)+'s',x:player.x,y:player.y-18,life:.7});
+    return;
+  }
   atkCd = 22;
   if (!activeWeapon) activeWeapon = ownedWeapons()[0];
-  if (activeWeapon === 'pistola') {
+  if (activeWeapon === 'gelatore') {
+    bullets.push({ x: player.x + player.w/2, y: player.y + 12, vx: 11 * player.facing, dmg: 0, freeze: true });
+    freezeShotCooldown = 480;
+  } else if (activeWeapon === 'pistola') {
     bullets.push({ x: player.x + player.w/2, y: player.y + 12, vx: 13 * player.facing, dmg: 50 });
   } else if (activeWeapon === 'martello') {
     swing = 14; atkCd = 34;
@@ -987,7 +1154,7 @@ function doAttack() {
     const reach = activeWeapon === 'suprema' ? 54 : 36;
     const hb = { x: player.facing > 0 ? player.x + player.w : player.x - reach, y: player.y - 6, w: reach, h: player.h + 12 };
     for (const en of enemies) if (en.alive && rectsOverlap(hb, en)) hurtEnemy(en, meleeDmg);
-    if (boss && boss.alive && !boss.final && rectsOverlap(hb, boss)) hurtBoss(meleeDmg);
+    if (boss && boss.alive && (!boss.final || (activeWeapon === 'suprema' && boss.quizDone)) && rectsOverlap(hb, boss)) hurtBoss(meleeDmg);
   }
 }
 function hurtEnemy(en, d) {
@@ -1004,7 +1171,7 @@ function hurtBoss(d) {
   floatTexts.push({ t: '-' + d + '\u2764', x: boss.x + boss.w/2, y: boss.y, life: 1 });
   if (boss.hp <= 0 && boss.alive) {
     boss.hp = 0; boss.alive = false; bossDeadTimer = 320;
-    chest = { x: boss.x + boss.w/2 - 26, y: 10*TILE - 36, open: 0 };
+    if(!boss.secretFinal) chest = { x: boss.x + boss.w/2 - 26, y: 10*TILE - 36, open: 0 };
     if (doggy) doggy.state = 'free';
     boom(boss.x + 38, boss.y + 40, '#ffd24a'); boom(boss.x + 38, boss.y + 60, '#ff5a1f');
   }
@@ -1038,7 +1205,7 @@ function resetPlayer(full) {
   for (const h of fallingHazards) { h.falling = false; h.y = h.sourceY ?? -20; h.timer = 75 + ((h.x*7)%90); }
   player.x = respawnPoint.x; player.y = respawnPoint.y;
   player.vx = 0; player.vy = 0; player.jumps = 0; player.flipping = 0; player.dead = 0;
-  grappleCooldown = 0;
+  grappleCooldown = 0; freezeShotCooldown = 0;
 }
 
 function rectsOverlap(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
@@ -1103,6 +1270,12 @@ function update() {
     // gravità
     player.vy += 0.62;
     if (player.vy > 15) player.vy = 15;
+    const climbingRope = greenRopes.find(r=>rectsOverlap(player,{x:r.x-10,y:r.y,w:r.w+20,h:r.h}));
+    if (climbingRope) {
+      if (player.vy > 2) player.vy = 2;
+      if (keys['ArrowUp']) player.vy = -4.2;
+      player.x += (climbingRope.x + climbingRope.w/2 - (player.x + player.w/2)) * 0.08;
+    }
     if (player.flipping > 0) player.flipping -= 0.35;
     if (grappleCooldown > 0) grappleCooldown--;
     if (grappleOwned && grappleCooldown === 0 && player.vy > 2 && grappleAnchors.length) {
@@ -1240,6 +1413,10 @@ function update() {
       hammerItem.taken = true; weapons.martello = true; activeWeapon = 'martello'; updateWeaponHud();
       floatTexts.push({t:'MARTELLO DEL TERREMOTO!',x:player.x,y:player.y-25,life:2,big:true});
     }
+    if (freezeGunItem && !freezeGunItem.taken && rectsOverlap(player, freezeGunItem)) {
+      freezeGunItem.taken = true; weapons.gelatore = true; activeWeapon = 'gelatore'; freezeShotCooldown = 0; updateWeaponHud();
+      floatTexts.push({t:'RAGGIO GELANTE! BLOCCA IL BOSS PER 5s',x:player.x,y:player.y-25,life:2.8,big:true});
+    }
     if (armorItem && !armorItem.taken && rectsOverlap(player, armorItem)) {
       armorItem.taken = true; armorReady = true;
       floatTexts.push({t:'ARMATURA: SI ATTIVA AL PRIMO COLPO!',x:player.x,y:player.y-25,life:2,big:true});
@@ -1250,6 +1427,15 @@ function update() {
     if (cityQuizTrigger && !quizCompleted && rectsOverlap(player, cityQuizTrigger)) {
       quizCompleted = true; showCityQuiz();
     }
+    if (secretPassageTrigger && !secretPassageFound && !enemies.some(en=>en.miniBoss&&en.alive) && !(boss&&boss.secretFinal&&boss.alive) && rectsOverlap(player, secretPassageTrigger)) {
+      secretPassageFound = true;
+      leverPulled = true;
+      solids = solids.filter(s=>!s.hiddenPassage);
+      document.getElementById('leverStatus').textContent = '🧭 Passaggio segreto trovato!';
+      document.getElementById('leverStatus').classList.add('lever-on');
+      floatTexts.push({t:'PASSAGGIO SEGRETO!',x:player.x,y:player.y-28,life:2,big:true});
+      boom(player.x+player.w/2,player.y+player.h/2,'#43e0d0');
+    }
     // leva
     if (lever && !leverPulled && !enemies.some(en=>en.miniBoss && en.alive) && rectsOverlap(player, lever)) {
       leverPulled = true; lever.pulled = true;
@@ -1257,16 +1443,17 @@ function update() {
       document.getElementById('leverStatus').classList.add('lever-on');
     }
     // traguardo
-    if (finish && leverPulled && rectsOverlap(player, finish)) {
+    if (finish && (leverPulled || (LEVELS[currentLevel].secretPassage && secretPassageFound)) && rectsOverlap(player, finish)) {
       totalGems += gemsCollected; totalGemsMax += gems.length;
       state = 'win';
-      if (currentLevel < LEVELS.length - 1) showLevelComplete(); else showToBeContinued();
+      if (currentLevel < LEVELS.length - 1) showLevelComplete(); else showCompassFinal();
     }
   }
 
   // ---- combattimento ed entita' ----
   if (state === 'play') {
     if (atkCd > 0) atkCd--;
+    if (freezeShotCooldown > 0) freezeShotCooldown--;
     if (swing > 0) swing--;
     if (invuln > 0) invuln--;
     // nemici di pattuglia
@@ -1288,8 +1475,16 @@ function update() {
     // proiettili della pistola
     bullets = bullets.filter(b => {
       b.x += b.vx;
-      for (const en of enemies) if (en.alive && b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) { hurtEnemy(en, b.dmg); return false; }
-      if (boss && boss.alive && (!boss.final || boss.quizDone) && b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h) { if(!boss.final) hurtBoss(b.dmg); else floatTexts.push({t:'SERVE IL MARTELLO!',x:boss.x+boss.w/2,y:boss.y,life:0.8}); return false; }
+      if (!b.freeze) for (const en of enemies) if (en.alive && b.x > en.x && b.x < en.x + en.w && b.y > en.y && b.y < en.y + en.h) { hurtEnemy(en, b.dmg); return false; }
+      if (boss && boss.alive && (!boss.final || boss.quizDone) && b.x > boss.x && b.x < boss.x + boss.w && b.y > boss.y && b.y < boss.y + boss.h) {
+        if(b.freeze){
+          boss.stun = 300;
+          floatTexts.push({t:'BOSS CONGELATO: 5 SECONDI!',x:boss.x+boss.w/2,y:boss.y,life:2,big:true});
+          boom(boss.x+boss.w/2,boss.y+boss.h/2,'#7de8ff');
+        }else if(!boss.final) hurtBoss(b.dmg);
+        else floatTexts.push({t:'SERVE IL MARTELLO!',x:boss.x+boss.w/2,y:boss.y,life:0.8});
+        return false;
+      }
       for (const s of solids) if (s.type !== 'plat' && b.x > s.x && b.x < s.x + s.w && b.y > s.y && b.y < s.y + s.h) return false;
       return b.x > -50 && b.x < LEVEL_W + 50;
     });
@@ -1310,14 +1505,18 @@ function update() {
     });
     // boss
     if (boss && boss.alive && (!boss.final || boss.quizDone)) {
+      if(boss.stun>0){
+        boss.stun--;
+        if(boss.hit>0)boss.hit--;
+      }else{
       boss.t++;
       if (boss.hit > 0) boss.hit--;
       boss.x += 1.2 * boss.dir;
-      const bMin = boss.final ? boss.arenaMin : LEVEL_W * 0.40;
-      const bMax = boss.final ? boss.arenaMax : LEVEL_W - boss.w - 50;
+      const bMin = boss.arenaMin ?? (boss.final ? boss.arenaMin : LEVEL_W * 0.40);
+      const bMax = boss.arenaMax ?? (boss.final ? boss.arenaMax : LEVEL_W - boss.w - 50);
       if (boss.x < bMin) { boss.x = bMin; boss.dir = 1; }
       if (boss.x > bMax) { boss.x = bMax; boss.dir = -1; }
-      boss.y = (boss.final ? boss.yBase : 10*TILE-boss.h) - Math.abs(Math.sin(boss.t * 0.11)) * 4;
+      boss.y = ((boss.final || boss.secretFinal) ? boss.yBase : 10*TILE-boss.h) - Math.abs(Math.sin(boss.t * 0.11)) * 4;
       if (boss.t % (boss.final ? 100 : 85) === 0 && player.dead === 0 && (!boss.final || boss.attackKind==='fire')) {
         const cx = boss.x + boss.w/2, cy = boss.y + boss.h/2;
         const dx = (player.x + player.w/2) - cx, dy = (player.y + player.h/2) - cy;
@@ -1332,10 +1531,11 @@ function update() {
         hurtPlayer(10, boss.final);
         player.vx = 11 * Math.sign(player.x - boss.x || -1); player.vy = -6;
       }
+      }
     }
     bossAcidWarnings = bossAcidWarnings.filter(w => {
       w.timer--;
-      if (w.timer<=0) { bossAcidPools.push({x:w.x-48,y:w.y-10,w:96,h:22,life:780}); return false; }
+      if (w.timer<=0) { bossAcidPools.push({x:w.x-48,y:w.y-10,w:96,h:22,life:300}); return false; }
       return true;
     });
     bossAcidPools = bossAcidPools.filter(p => {
@@ -1348,8 +1548,13 @@ function update() {
     if (bossDeadTimer > 0) {
       bossDeadTimer--;
       if (bossDeadTimer === 0) {
-        totalGems += gemsCollected; totalGemsMax += gems.length;
-        state = 'win'; boss && boss.cityFinal ? showKeyFound() : (boss && boss.final ? showWorldMapTeaser() : showActTwo());
+        if(boss&&boss.secretFinal){
+          document.getElementById('leverStatus').textContent='🧭 Guardiano sconfitto: trova il passaggio!';
+          floatTexts.push({t:'IL PASSAGGIO ORA PUÒ APRIRSI!',x:player.x,y:player.y-30,life:2.4,big:true});
+        }else{
+          totalGems += gemsCollected; totalGemsMax += gems.length;
+          state = 'win'; boss && boss.cityFinal ? showKeyFound() : (boss && boss.final ? showWorldMapTeaser() : showActTwo());
+        }
       }
     }
     // palle di fuoco del boss (-5 cuori)
@@ -1554,6 +1759,18 @@ function update() {
 
 // ---- Disegno ----
 let t = 0;
+function drawLevelBackgroundImage(key) {
+  const img=BACKGROUND_IMAGES[key];
+  if(!img||!img.complete||!img.naturalWidth)return false;
+  const sourceW=Math.min(img.naturalWidth,img.naturalHeight*(W/H));
+  const travel=Math.max(0,img.naturalWidth-sourceW);
+  const progress=LEVEL_W>W?cam/(LEVEL_W-W):0;
+  const sx=travel*Math.max(0,Math.min(1,progress));
+  ctx.save();ctx.globalAlpha=0.88;
+  ctx.drawImage(img,sx,0,sourceW,img.naturalHeight,0,0,W,H);
+  ctx.restore();
+  return true;
+}
 function draw() {
   t++;
   ctx.clearRect(0,0,W,H);
@@ -1562,7 +1779,22 @@ function draw() {
   const g = ctx.createLinearGradient(0,0,0,H);
   g.addColorStop(0,THEME.bgTop); g.addColorStop(1,THEME.bgBot);
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-  if (THEME.sky && THEME.day) {
+  const backgroundKey=LEVELS[currentLevel].backgroundImage;
+  drawLevelBackgroundImage(backgroundKey);
+  if (backgroundKey === 'jungle') {
+    // L'immagine contiene già cielo e alberi; aggiungiamo solo una lieve foschia.
+    const haze=ctx.createLinearGradient(0,0,0,H);haze.addColorStop(0,'rgba(180,245,210,.04)');haze.addColorStop(1,'rgba(10,45,24,.18)');ctx.fillStyle=haze;ctx.fillRect(0,0,W,H);
+  } else if (LEVELS[currentLevel].deco === 'ocean') {
+    // raggi filtrati dall'acqua, bolle e pesci lontani
+    ctx.fillStyle='rgba(150,240,255,.08)';
+    for(let x=-120;x<W+200;x+=230){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+80,0);ctx.lineTo(x+230,H);ctx.lineTo(x+120,H);ctx.closePath();ctx.fill();}
+    for(let i=0;i<32;i++){
+      const bx=((i*173+t*(.15+(i%3)*.08)-cam*.08)%(W+80))-40,by=H-((i*83+t*(.35+(i%4)*.1))%(H+100));
+      ctx.strokeStyle='rgba(190,245,255,.55)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(bx,by,2+i%4,0,7);ctx.stroke();
+    }
+    ctx.fillStyle='rgba(10,55,85,.42)';
+    for(let i=0;i<14;i++){const fx=((i*211-t*.2-cam*.16)%(W+160)+W+160)%(W+160)-80,fy=80+(i*67)%(H-150);ctx.beginPath();ctx.ellipse(fx,fy,18,7,0,0,7);ctx.moveTo(fx-16,fy);ctx.lineTo(fx-29,fy-10);ctx.lineTo(fx-29,fy+10);ctx.closePath();ctx.fill();}
+  } else if (THEME.sky && THEME.day) {
     // sole
     ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.arc(W-120, 90, 36, 0, 7); ctx.fill();
     ctx.fillStyle = 'rgba(255,240,170,0.25)'; ctx.beginPath(); ctx.arc(W-120, 90, 58, 0, 7); ctx.fill();
@@ -1631,7 +1863,19 @@ function draw() {
   ctx.save();
   ctx.translate(-cam, -camY);
 
-  if (LEVELS[currentLevel].deco === 'icecream') {
+  if (LEVELS[currentLevel].deco === 'ocean') {
+    // fondale: alghe, coralli, conchiglie e relitti
+    for(let x=90,i=0;x<LEVEL_W;x+=210,i++){
+      const y=LEVEL_H-125;
+      ctx.strokeStyle=i%2?'#27875d':'#3ba66b';ctx.lineWidth=7;ctx.lineCap='round';
+      for(let k=0;k<3;k++){ctx.beginPath();ctx.moveTo(x+k*12,y);ctx.quadraticCurveTo(x-10+k*15,y-45-(i%3)*12,x+k*10+Math.sin(t*.04+i)*8,y-85-(k%2)*18);ctx.stroke();}
+      if(i%3===0){ctx.fillStyle=i%2?'#ef6c75':'#e39a43';for(let k=0;k<5;k++){ctx.beginPath();ctx.arc(x+55+Math.cos(k*1.26)*15,y-18+Math.sin(k*1.26)*15,7,0,7);ctx.fill();}}
+      if(i%5===2){ctx.fillStyle='#e8d7ad';ctx.beginPath();ctx.arc(x+90,y-5,12,Math.PI,0);ctx.fill();}
+    }
+    if(currentLevel===32){
+      const rx=LEVEL_W*.54,ry=LEVEL_H-235;ctx.save();ctx.translate(rx,ry);ctx.rotate(-.08);ctx.fillStyle='rgba(75,52,35,.72)';ctx.fillRect(-170,0,340,75);ctx.beginPath();ctx.moveTo(-190,0);ctx.lineTo(190,0);ctx.lineTo(130,95);ctx.lineTo(-125,95);ctx.closePath();ctx.fill();ctx.fillRect(-12,-155,24,155);ctx.strokeStyle='rgba(210,225,210,.45)';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(0,-145);ctx.lineTo(135,-20);ctx.stroke();ctx.restore();
+    }
+  } else if (LEVELS[currentLevel].deco === 'icecream') {
     const shopX = LEVEL_W * 0.46;
     // parchetto dei ricordi: alberi, panchine e vialetto
     for (let x = 360; x < shopX - 180; x += 520) {
@@ -1679,23 +1923,77 @@ function draw() {
     ctx.fillStyle='#c6a7cc';ctx.font='bold 23px Trebuchet MS';ctx.textAlign='left';
     ctx.fillText('PONTE LEVATOIO',240,130);ctx.fillText('PRIGIONI',1800,130);ctx.fillText('SALA DELLE ARMI',3300,130);ctx.fillText('SALA DEL TRONO',4400,130);
   } else if (LEVELS[currentLevel].deco === 'worldCity') {
-    const lv=LEVELS[currentLevel];
+    const lv=LEVELS[currentLevel], city=lv.cityName, ground=LEVEL_H-125;
+    ctx.save(); ctx.globalAlpha=0.48;
+    if(city==='Il Cairo'){ctx.fillStyle='#d9b765';ctx.fillRect(0,ground-90,LEVEL_W,90);}
+    else if(city==='Isola di Pasqua'){ctx.fillStyle='#3288ad';ctx.fillRect(0,ground-105,LEVEL_W,105);ctx.fillStyle='#55a34f';ctx.fillRect(0,ground-35,LEVEL_W,35);}
+    else if(city==='Chichén Itzá'){ctx.fillStyle='#174b2c';for(let x=0;x<LEVEL_W;x+=95){ctx.beginPath();ctx.arc(x,ground-45-(x%4)*12,65,0,7);ctx.fill();}}
+    else {
+      for(let x=0,i=0;x<LEVEL_W;x+=125,i++){
+        const h=city==='New York'||city==='Shanghai'||city==='Tokyo'?150+(i*67)%250:65+(i*47)%125;
+        ctx.fillStyle=lv.theme.day?(city==='Roma'?'#b98c68':'#6e7480'):'#17213e';
+        ctx.fillRect(x,ground-h,105,h);
+        if(city==='Parigi'){ctx.fillStyle='#454958';ctx.beginPath();ctx.moveTo(x-5,ground-h);ctx.lineTo(x+52,ground-h-35);ctx.lineTo(x+110,ground-h);ctx.fill();}
+        if(city==='Londra'){ctx.fillStyle='#f2cc68';for(let wy=ground-h+18;wy<ground-15;wy+=28)ctx.fillRect(x+15,wy,9,13);}
+        if(city==='Mosca'&&i%3===0){ctx.fillStyle='#ba4054';ctx.beginPath();ctx.arc(x+52,ground-h,36,Math.PI,0);ctx.fill();}
+        if((city==='Shanghai'||city==='Tokyo')&&i%2===0){ctx.fillStyle=i%4===0?'#ff57c8':'#54e6ff';for(let wy=ground-h+20;wy<ground-15;wy+=32)ctx.fillRect(x+18,wy,55,4);}
+      }
+    }
+    ctx.restore();
+    if(lv.cityLayout==='vertical'){
+      ctx.save();ctx.globalAlpha=0.3;
+      for(let y=ground-520;y>260;y-=560)for(let x=80,i=0;x<LEVEL_W-60;x+=190,i++){
+        if(city==='Isola di Pasqua'||city==='Chichén Itzá'){ctx.fillStyle=city==='Isola di Pasqua'?'#397747':'#174b2c';ctx.beginPath();ctx.arc(x,y,58+(i%3)*12,0,7);ctx.fill();}
+        else{const h=90+(i*53)%170;ctx.fillStyle=city==='Tokyo'?(i%2?'#552d78':'#204d78'):(i%2?'#355c75':'#24445e');ctx.fillRect(x,y-h,145,h);ctx.fillStyle=i%2?'#ff60cf':'#4ee9ff';for(let wy=y-h+18;wy<y-15;wy+=28)ctx.fillRect(x+18,wy,70,4);}
+      }
+      ctx.restore();
+    }
+
     lv.monuments.forEach((name,i)=>{
-      const x=620+i*2200, base=LEVEL_H-125;
-      ctx.save();ctx.globalAlpha=0.78;ctx.fillStyle=lv.theme.day?'#746b61':'#18223f';ctx.strokeStyle=lv.theme.day?'#4e4842':'#8da5d8';ctx.lineWidth=5;
-      if(/Eiffel|Tower|Torre|Big Ben|Skytree|Shanghai/i.test(name)){
-        ctx.beginPath();ctx.moveTo(x-85,base);ctx.lineTo(x-28,base-280);ctx.lineTo(x,base-430);ctx.lineTo(x+28,base-280);ctx.lineTo(x+85,base);ctx.stroke();ctx.fillRect(x-35,base-230,70,18);
+      const x=lv.cityLayout==='vertical'?[430,1050,690][i]:620+i*2200;
+      const base=lv.cityLayout==='vertical'?LEVEL_H-230-i*820:LEVEL_H-125;
+      ctx.save();ctx.globalAlpha=0.9;ctx.fillStyle=lv.theme.day?'#625b55':'#25345c';ctx.strokeStyle=lv.theme.day?'#3d3a38':'#9db8ed';ctx.lineWidth=6;
+      if(/Eiffel/i.test(name)){
+        ctx.beginPath();ctx.moveTo(x-105,base);ctx.lineTo(x-30,base-285);ctx.lineTo(x,base-445);ctx.lineTo(x+30,base-285);ctx.lineTo(x+105,base);ctx.moveTo(x-72,base-130);ctx.lineTo(x+72,base-130);ctx.moveTo(x-42,base-255);ctx.lineTo(x+42,base-255);ctx.stroke();
+        for(let y=base-80;y>base-370;y-=55){const w=(base-y)*.2;ctx.beginPath();ctx.moveTo(x-w,y);ctx.lineTo(x+w,y-45);ctx.moveTo(x+w,y);ctx.lineTo(x-w,y-45);ctx.stroke();}
+      } else if(/Statua della Libertà/i.test(name)){
+        ctx.fillStyle='#5e9f8d';ctx.fillRect(x-42,base-190,84,190);ctx.fillRect(x-70,base-225,140,38);ctx.fillRect(x-28,base-340,56,120);
+        ctx.beginPath();ctx.arc(x,base-365,34,0,7);ctx.fill();for(let a=0;a<7;a++){ctx.save();ctx.translate(x,base-365);ctx.rotate(a*Math.PI/3.5);ctx.fillRect(-3,-63,6,32);ctx.restore();}
+        ctx.save();ctx.translate(x+28,base-300);ctx.rotate(-.45);ctx.fillRect(0,-120,13,135);ctx.fillStyle='#ffd24a';ctx.beginPath();ctx.moveTo(6,-132);ctx.lineTo(-9,-110);ctx.lineTo(18,-110);ctx.fill();ctx.restore();
+      } else if(/Big Ben|Elizabeth Tower/i.test(name)){
+        ctx.fillRect(x-55,base-330,110,330);ctx.fillRect(x-42,base-405,84,75);ctx.beginPath();ctx.moveTo(x-52,base-405);ctx.lineTo(x,base-480);ctx.lineTo(x+52,base-405);ctx.fill();
+        ctx.fillStyle='#f1dfad';ctx.beginPath();ctx.arc(x,base-365,27,0,7);ctx.fill();ctx.strokeStyle='#2b2b35';ctx.lineWidth=3;ctx.stroke();ctx.beginPath();ctx.moveTo(x,base-365);ctx.lineTo(x,base-386);ctx.moveTo(x,base-365);ctx.lineTo(x+17,base-355);ctx.stroke();
+      } else if(/San Basilio/i.test(name)){
+        for(let d=-2;d<=2;d++){const dx=x+d*62,h=150+(2-Math.abs(d))*35;ctx.fillStyle=d%2?'#2d9c68':'#c44a45';ctx.fillRect(dx-24,base-h,48,h);ctx.fillStyle=d%2?'#e7c44e':'#4a9bd0';ctx.beginPath();ctx.moveTo(dx-34,base-h);ctx.quadraticCurveTo(dx,base-h-75,dx+34,base-h);ctx.fill();ctx.fillStyle='#ffd24a';ctx.fillRect(dx-3,base-h-88,6,18);}
       } else if(/Piramid|Castillo/i.test(name)){
         for(let s=0;s<7;s++)ctx.fillRect(x-150+s*18,base-s*38,300-s*36,32);ctx.fillRect(x-38,base-300,76,45);
-      } else if(/Moai|Sfinge/i.test(name)){
-        for(let m=0;m<5;m++){const mx=x-130+m*65;ctx.fillRect(mx,base-150,48,150);ctx.beginPath();ctx.arc(mx+24,base-170,32,0,7);ctx.fill();}
+        if(/Castillo/i.test(name)){ctx.fillStyle='#31281e';ctx.fillRect(x-8,base-265,16,265);for(let s=0;s<7;s++)ctx.fillRect(x-150+s*18,base-s*38+14,300-s*36,5);}
+      } else if(/Moai/i.test(name)){
+        for(let m=0;m<5;m++){const mx=x-150+m*75;ctx.fillStyle='#5c5b55';ctx.fillRect(mx,base-145,52,145);ctx.beginPath();ctx.ellipse(mx+26,base-176,32,48,0,0,7);ctx.fill();ctx.fillStyle='#33332f';ctx.fillRect(mx+6,base-187,40,7);ctx.fillRect(mx+19,base-170,31,8);}
+      } else if(/Sfinge/i.test(name)){
+        ctx.fillStyle='#c5a85e';ctx.fillRect(x-160,base-100,270,100);ctx.beginPath();ctx.arc(x+105,base-135,68,0,7);ctx.fill();ctx.fillRect(x+55,base-140,45,90);ctx.fillStyle='#6f5a32';ctx.fillRect(x+110,base-150,10,7);ctx.fillRect(x+135,base-150,10,7);
       } else if(/Colosseo/i.test(name)){
-        ctx.fillRect(x-180,base-230,360,230);ctx.fillStyle=lv.theme.bgBot;for(let r=0;r<3;r++)for(let c=0;c<7;c++){ctx.beginPath();ctx.arc(x-145+c*50,base-185+r*65,16,Math.PI,0);ctx.fill();ctx.fillRect(x-161+c*50,base-185+r*65,32,38);}
+        ctx.fillStyle='#aa7956';ctx.beginPath();ctx.ellipse(x,base-205,205,62,0,Math.PI,0);ctx.lineTo(x+205,base);ctx.lineTo(x-205,base);ctx.closePath();ctx.fill();ctx.fillStyle='#342820';for(let r=0;r<3;r++)for(let c=0;c<8;c++){ctx.beginPath();ctx.arc(x-165+c*47,base-165+r*62,15,Math.PI,0);ctx.fill();ctx.fillRect(x-180+c*47,base-165+r*62,30,38);}
+      } else if(/Oriental Pearl/i.test(name)){
+        ctx.fillStyle='#dfe7ef';ctx.fillRect(x-6,base-430,12,430);for(const p of [{y:base-115,r:42},{y:base-270,r:63},{y:base-390,r:25}]){ctx.fillStyle='#db4d91';ctx.beginPath();ctx.arc(x,p.y,p.r,0,7);ctx.fill();ctx.strokeStyle='#f4b4d3';ctx.stroke();}ctx.fillStyle='#dfe7ef';ctx.fillRect(x-48,base-90,96,90);
+      } else if(/Skytree/i.test(name)){
+        ctx.strokeStyle='#b7d6e8';ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(x-70,base);ctx.lineTo(x,base-470);ctx.lineTo(x+70,base);ctx.moveTo(x-45,base-170);ctx.lineTo(x+45,base-170);ctx.stroke();ctx.fillStyle='#66bfe8';ctx.fillRect(x-55,base-335,110,25);ctx.fillRect(x-35,base-385,70,18);
       } else {
         ctx.fillRect(x-180,base-80,360,80);ctx.beginPath();ctx.arc(x,base-80,105,Math.PI,0);ctx.fill();ctx.fillRect(x-12,base-280,24,100);
       }
-      ctx.globalAlpha=1;ctx.fillStyle=lv.theme.day?'#2b2320':'#e8ddd0';ctx.font='bold 22px Trebuchet MS';ctx.textAlign='center';ctx.fillText(name,x,base+30);ctx.restore();
+      ctx.globalAlpha=1;ctx.fillStyle=lv.theme.day?'#2b2320':'#e8ddd0';ctx.font='bold 22px Trebuchet MS';ctx.textAlign='center';
+      if(!((city==='Tokyo'&&name==='Tokyo Skytree')||(city==='Chichén Itzá'&&name==='El Castillo')))ctx.fillText(name,x,base+30);
+      ctx.restore();
     });
+  }
+
+  // corde verdi delle foreste: sono anche superfici scalabili
+  for(const r of greenRopes){
+    const sway=Math.sin(t*.045+r.y*.02)*2;
+    ctx.strokeStyle='#2f9b45';ctx.lineWidth=7;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(r.x+r.w/2,r.y);ctx.quadraticCurveTo(r.x+r.w/2+sway,r.y+r.h/2,r.x+r.w/2,r.y+r.h);ctx.stroke();
+    ctx.fillStyle='#73c95c';
+    ctx.beginPath();ctx.ellipse(r.x-2+sway,r.y+13,7,3,-.5,0,7);ctx.ellipse(r.x+12-sway,r.y+29,7,3,.5,0,7);ctx.fill();
   }
 
   // rocce
@@ -1793,6 +2091,7 @@ function draw() {
   for(const a of grappleAnchors){ctx.strokeStyle='#ffd24a';ctx.lineWidth=3;ctx.beginPath();ctx.arc(a.x,a.y,10,0,7);ctx.stroke();ctx.beginPath();ctx.moveTo(a.x,a.y+10);ctx.lineTo(a.x,a.y+23);ctx.stroke();}
   if(grappleItem&&!grappleItem.taken){ctx.fillStyle='#ffd24a';ctx.font='bold 25px Trebuchet MS';ctx.fillText('🪝',grappleItem.x,grappleItem.y+25);}
   if(hammerItem&&!hammerItem.taken&&!enemies.some(en=>en.miniBoss&&en.alive)){ctx.fillStyle='#ffd24a';ctx.font='bold 28px Trebuchet MS';ctx.fillText('🔨',hammerItem.x,hammerItem.y+28);}
+  if(freezeGunItem&&!freezeGunItem.taken){ctx.fillStyle='#7de8ff';ctx.fillRect(freezeGunItem.x,freezeGunItem.y+8,34,12);ctx.fillRect(freezeGunItem.x+5,freezeGunItem.y+20,9,9);ctx.fillStyle='#e9fcff';ctx.beginPath();ctx.arc(freezeGunItem.x+29,freezeGunItem.y+14,8,0,7);ctx.fill();ctx.fillStyle='#35bddd';ctx.font='bold 15px Trebuchet MS';ctx.textAlign='center';ctx.fillText('❄️',freezeGunItem.x+17,freezeGunItem.y-4);}
   if(armorItem&&!armorItem.taken){ctx.fillStyle='#7ad0ff';ctx.font='bold 28px Trebuchet MS';ctx.fillText('🛡️',armorItem.x,armorItem.y+28);}
   if(citySign){ctx.fillStyle='#287a4a';ctx.fillRect(citySign.x,citySign.y,citySign.w,42);ctx.fillStyle='#fff';ctx.font='bold 18px Trebuchet MS';ctx.textAlign='center';ctx.fillText(LEVELS[currentLevel].cityName,citySign.x+citySign.w/2,citySign.y+27);ctx.fillStyle='#6b5749';ctx.fillRect(citySign.x+56,citySign.y+42,8,38);}
   for(const w of bossAcidWarnings){ctx.strokeStyle='rgba(120,255,50,'+(0.5+Math.sin(t*.3)*.4)+')';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(w.x,w.y,50,12,0,0,7);ctx.stroke();}
@@ -2006,24 +2305,39 @@ function draw() {
   for (const en of enemies) {
     if (!en.alive) continue;
     const step = Math.sin(t * 0.2 + en.x) * 2;
-    ctx.fillStyle = en.elite ? '#8a2438' : '#7a3db0'; ctx.fillRect(en.x, en.y + 8 + step*0.3, en.w, en.h - 8);
-    ctx.fillStyle = en.elite ? '#b03048' : '#9355cc'; ctx.fillRect(en.x, en.y + 8 + step*0.3, en.w, 6);
-    ctx.fillStyle = en.elite ? '#4a0e18' : '#4d2470';
-    const hx = en.elite ? 6 : 3, hy = en.elite ? 10 : 5;
-    ctx.beginPath(); ctx.moveTo(en.x + 4, en.y + 10); ctx.lineTo(en.x - hx, en.y - hy); ctx.lineTo(en.x + 12, en.y + 8); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(en.x + en.w - 4, en.y + 10); ctx.lineTo(en.x + en.w + hx, en.y - hy); ctx.lineTo(en.x + en.w - 12, en.y + 8); ctx.closePath(); ctx.fill();
-    if (en.elite && en.hp < en.maxHp) {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(en.x - 2, en.y - 14, en.w + 4, 5);
-      ctx.fillStyle = '#ff4a5a'; ctx.fillRect(en.x - 1, en.y - 13, (en.w + 2) * en.hp / en.maxHp, 3);
+    if(en.shark){
+      ctx.save();ctx.translate(en.x+en.w/2,en.y+en.h/2+step);ctx.scale(en.dir,1);
+      ctx.fillStyle='#728fa3';ctx.beginPath();ctx.ellipse(0,0,28,13,0,0,7);ctx.fill();
+      ctx.fillStyle='#567487';ctx.beginPath();ctx.moveTo(-23,0);ctx.lineTo(-43,-17);ctx.lineTo(-39,0);ctx.lineTo(-43,17);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(-3,-10);ctx.lineTo(8,-27);ctx.lineTo(14,-8);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#dcecf2';ctx.beginPath();ctx.ellipse(8,6,18,6,0,0,Math.PI);ctx.fill();
+      ctx.fillStyle='#111';ctx.beginPath();ctx.arc(16,-4,2.5,0,7);ctx.fill();
+      ctx.strokeStyle='#b52635';ctx.lineWidth=2;ctx.beginPath();ctx.arc(24,5,8,Math.PI*.8,Math.PI*1.45);ctx.stroke();
+      ctx.fillStyle='#fff';for(let j=0;j<3;j++){ctx.beginPath();ctx.moveTo(19+j*4,3);ctx.lineTo(21+j*4,8);ctx.lineTo(23+j*4,3);ctx.fill();}
+      ctx.restore();
+    }else{
+      ctx.fillStyle = en.elite ? '#8a2438' : '#7a3db0'; ctx.fillRect(en.x, en.y + 8 + step*0.3, en.w, en.h - 8);
+      ctx.fillStyle = en.elite ? '#b03048' : '#9355cc'; ctx.fillRect(en.x, en.y + 8 + step*0.3, en.w, 6);
+      ctx.fillStyle = en.elite ? '#4a0e18' : '#4d2470';
+      const hx = en.elite ? 6 : 3, hy = en.elite ? 10 : 5;
+      ctx.beginPath(); ctx.moveTo(en.x + 4, en.y + 10); ctx.lineTo(en.x - hx, en.y - hy); ctx.lineTo(en.x + 12, en.y + 8); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(en.x + en.w - 4, en.y + 10); ctx.lineTo(en.x + en.w + hx, en.y - hy); ctx.lineTo(en.x + en.w - 12, en.y + 8); ctx.closePath(); ctx.fill();
+      if (en.elite && en.hp < en.maxHp) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(en.x - 2, en.y - 14, en.w + 4, 5);
+        ctx.fillStyle = '#ff4a5a'; ctx.fillRect(en.x - 1, en.y - 13, (en.w + 2) * en.hp / en.maxHp, 3);
+      }
+      const ex = en.dir > 0 ? 3 : -3;
+      ctx.fillStyle = '#ffdf3d';
+      ctx.fillRect(en.x + 8 + ex, en.y + 16, 5, 5); ctx.fillRect(en.x + en.w - 13 + ex, en.y + 16, 5, 5);
+      ctx.fillStyle = '#2a0e40'; ctx.fillRect(en.x + 10 + ex, en.y + 26, en.w - 20, 3);
     }
-    const ex = en.dir > 0 ? 3 : -3;
-    ctx.fillStyle = '#ffdf3d';
-    ctx.fillRect(en.x + 8 + ex, en.y + 16, 5, 5); ctx.fillRect(en.x + en.w - 13 + ex, en.y + 16, 5, 5);
-    ctx.fillStyle = '#2a0e40'; ctx.fillRect(en.x + 10 + ex, en.y + 26, en.w - 20, 3);
   }
   // proiettili
-  ctx.fillStyle = '#ffe066';
-  for (const b of bullets) { ctx.fillRect(b.x - 6, b.y - 2, 12, 4); }
+  for (const b of bullets) {
+    ctx.fillStyle=b.freeze?'#9ff5ff':'#ffe066';
+    if(b.freeze){ctx.beginPath();ctx.arc(b.x,b.y,8,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.beginPath();ctx.moveTo(b.x-11,b.y);ctx.lineTo(b.x+11,b.y);ctx.moveTo(b.x,b.y-11);ctx.lineTo(b.x,b.y+11);ctx.stroke();}
+    else ctx.fillRect(b.x - 6, b.y - 2, 12, 4);
+  }
   // boss
   if (boss && boss.alive) {
     const bx = boss.x, by = boss.y;
@@ -2043,6 +2357,11 @@ function draw() {
     ctx.fillStyle = '#2a060c'; ctx.fillRect(bx + 18, by + 62, boss.w - 36, 8);
     ctx.fillStyle = '#fff';
     for (let i = 0; i < 4; i++) ctx.fillRect(bx + 20 + i * 10, by + 62, 5, 8);
+    if(boss.stun>0){
+      ctx.fillStyle='rgba(90,225,255,.42)';ctx.fillRect(bx-5,by-8,boss.w+10,boss.h+13);
+      ctx.strokeStyle='#d9fbff';ctx.lineWidth=4;ctx.strokeRect(bx-5,by-8,boss.w+10,boss.h+13);
+      ctx.fillStyle='#fff';ctx.font='bold 16px Trebuchet MS';ctx.textAlign='center';ctx.fillText('❄ '+Math.ceil(boss.stun/60)+'s',bx+boss.w/2,by-16);
+    }
   }
   // cuoricini
   for (const hr of hearts) {
@@ -2424,9 +2743,10 @@ function drawHero() {
       ctx.fillStyle = 'rgba(67,224,208,' + (0.25 + Math.sin(t*0.15)*0.15) + ')';
       ctx.fillRect(7, -17 + arm, 7, 20);
     }
-  } else if (activeWeapon === 'pistola') {
-    ctx.fillStyle = '#3a3a44'; ctx.fillRect(9, 1 + arm, 9, 4);
+  } else if (activeWeapon === 'pistola' || activeWeapon === 'gelatore') {
+    ctx.fillStyle = activeWeapon === 'gelatore' ? '#63dff2' : '#3a3a44'; ctx.fillRect(9, 1 + arm, 9, 4);
     ctx.fillRect(9, 1 + arm, 3, 7);
+    if(activeWeapon === 'gelatore'){ctx.fillStyle='#e8fdff';ctx.fillRect(15,0+arm,5,6);}
   }
 
   // testa
@@ -2466,7 +2786,8 @@ function startGame() {
     }
   }
   currentLevel = 0; tries = 0; totalGems = 0; totalGemsMax = 0;
-  weapons = { spada:false, pistola:false, suprema:false, martello:false };
+  weapons = { spada:false, pistola:false, suprema:false, martello:false, gelatore:false };
+  freezeShotCooldown = 0;
   grappleOwned = false;
   activeWeapon = null;
   updateWeaponHud();
@@ -2491,16 +2812,23 @@ function updateWeaponHud() {
 }
 function startLevel() {
   buildLevel();
+  // Nei livelli finali la Spada Suprema deve essere sempre disponibile,
+  // anche se si parte direttamente da un mondo di test o la si è saltata.
+  if (currentLevel >= 19) weapons.suprema = true;
+  if (boss && (boss.final || boss.secretFinal)) activeWeapon = 'suprema';
   document.getElementById('gemsTotal').textContent = gems.length;
   document.getElementById('gems').textContent = '0';
   document.getElementById('levelBadge').textContent = '⛏️ ' + (currentLevel+1) + '/' + LEVELS.length;
   const ls = document.getElementById('leverStatus');
   if (LEVELS[currentLevel].cityQuiz) { ls.textContent = boss && boss.cityFinal ? '🗿 Riconosci il monumento, poi affronta il guardiano' : '❓ Raggiungi la domanda sulla città'; ls.classList.remove('lever-on'); }
+  else if (LEVELS[currentLevel].deco === 'ocean') { ls.textContent = '🌊 Esplora il fondale e trova il passaggio segreto'; ls.classList.remove('lever-on'); }
+  else if (greenRopes.length) { ls.textContent = currentLevel === LEVELS.length-1 ? '🌿 Trova il tunnel e sconfiggi il guardiano' : '🌿 Scala gli alberi e cerca il passaggio sottoterra'; ls.classList.remove('lever-on'); }
+  else if (LEVELS[currentLevel].compassTrail) { ls.textContent = currentLevel === LEVELS.length-1 ? '🧭 Sconfiggi il guardiano dello scrigno' : '🧭 Segui la bussola e trova il passaggio'; ls.classList.remove('lever-on'); }
   else if (boss && boss.final && !boss.quizDone) { ls.textContent = '\ud83c\udff0 Raggiungi la sala del trono'; ls.classList.remove('lever-on'); }
   else if (boss) { ls.textContent = '\ud83d\udc79 Sconfiggi il boss!'; ls.classList.add('lever-on'); }
   else { ls.textContent = '\ud83d\udd12 Trova la leva'; ls.classList.remove('lever-on'); }
   gemsCollected = 0; leverPulled = false; flipParticles = [];
-  playerHP = 50; invuln = 0; atkCd = 0; swing = 0; bossDeadTimer = 0;
+  playerHP = 50; invuln = 0; atkCd = 0; swing = 0; bossDeadTimer = 0; freezeShotCooldown = 0;
   capeOwned = false; capeUses = 1; capeActive = 0;
   updateCapeBtn();
   updateWeaponHud();
@@ -2553,7 +2881,16 @@ function showWorldMapTeaser() {
   overlay.innerHTML=`<h1 style="color:var(--gem)">LA MAPPA DELLA CHIAVE</h1><div class="sub">Il boss finale è sconfitto!</div><p>Il boss rivela che esiste una chiave misteriosa e consegna a John una mappa: <b>Parigi, New York, Londra, Mosca, Roma, Il Cairo, Shanghai, Tokyo, Isola di Pasqua e Chichén Itzá</b>.</p><p>Il viaggio continua nei livelli 21–30.</p><button id="mapRestart" style="pointer-events:all;padding:12px 30px;border-radius:9px;background:#1fa596;color:white;border:0;font:inherit;font-weight:bold;">PARTI PER PARIGI</button>`;
   document.getElementById('mapRestart').onclick=()=>{currentLevel++;startLevel();};
 }
-function showKeyFound(){overlay.classList.remove('hidden');overlay.innerHTML=`<h1 style="color:var(--gold)">LA CHIAVE È STATA TROVATA!</h1><div class="sub">Chichén Itzá · Mondo 30 completato</div><p>John e Doggy hanno attraversato dieci luoghi del mondo, riconosciuto i monumenti e sconfitto il guardiano in cima a El Castillo.</p><p><b style="color:var(--gem)">La chiave misteriosa è finalmente loro.</b></p><button id="keyRestart" style="pointer-events:all;padding:12px 30px;border-radius:9px;background:#1fa596;color:white;border:0;font:inherit;font-weight:bold">RIGIOCA</button>`;document.getElementById('keyRestart').onclick=()=>startGame();}
+function showKeyFound(){
+  overlay.classList.remove('hidden');
+  overlay.innerHTML=`<h1 style="color:var(--gold)">LA CHIAVE E LA BUSSOLA</h1><div class="sub">Chichén Itzá · Mondo 30 completato</div><p>Dietro la pietra che custodiva la chiave, John e Doggy trovano una vecchia <b style="color:var(--gem)">bussola</b>. L’ago gira impazzito: a volte indica il mare, altre volte la terra.</p><p>Sul retro è incisa una frase:</p><p style="padding:12px;border:2px solid var(--gold);border-radius:8px;color:var(--gold);font-size:18px"><b>“TI PORTERÀ ALLO SCRIGNO A CUI APPARTIENE LA CHIAVE.”</b></p><p>La rotta segue questo ritmo: un mondo di mare, uno di terra, due di mare e uno di terra, fino alla giungla dello scrigno.</p><button id="compassStart" style="pointer-events:all;padding:12px 30px;border-radius:9px;background:#1fa596;color:white;border:0;font:inherit;font-weight:bold">SEGUI LA BUSSOLA 🧭</button>`;
+  document.getElementById('compassStart').onclick=()=>{currentLevel++;startLevel();};
+}
+function showCompassFinal(){
+  overlay.classList.remove('hidden');
+  overlay.innerHTML=`<h1 style="color:var(--gold)">LO SCRIGNO DELLA CHIAVE</h1><div class="sub">Mondo 40 completato</div><p>La bussola si ferma davanti a uno scrigno antichissimo. John inserisce la chiave: la serratura riconosce il suo proprietario e il coperchio si apre in una luce dorata.</p><p>Dentro non ci sono soltanto monete, ma una pergamena con il simbolo della Miniera Perduta e una nuova promessa:</p><p style="color:var(--gem);font-size:18px"><b>“CHI TROVA IL CORAGGIO DI ARRIVARE FIN QUI PUÒ SCEGLIERE LA PROSSIMA AVVENTURA.”</b></p><p>John, Doggy, la Spada Suprema e la bussola sono pronti.</p><button id="compassRestart" style="pointer-events:all;padding:12px 30px;border-radius:9px;background:#1fa596;color:white;border:0;font:inherit;font-weight:bold">RIGIOCA DALL’INIZIO</button>`;
+  document.getElementById('compassRestart').onclick=()=>startGame();
+}
 function showActTwo() {
   overlay.classList.remove('hidden');
   overlay.innerHTML = `
@@ -2594,8 +2931,8 @@ function testStart(i) {
   currentLevel = i; tries = 0; totalGems = 0; totalGemsMax = 0;
   const armed = i >= 8;
   grappleOwned = i >= 18;
-  weapons = { spada: armed, pistola: armed, suprema: false, martello: i >= 19 };
-  activeWeapon = i >= 19 ? 'martello' : (armed ? 'pistola' : null);
+  weapons = { spada: armed, pistola: armed, suprema: i >= 19, martello: i >= 19, gelatore: i >= 36 };
+  activeWeapon = i >= 19 ? 'suprema' : (armed ? 'pistola' : null);
   updateWeaponHud();
   document.getElementById('tries').textContent = '0';
   startLevel();
