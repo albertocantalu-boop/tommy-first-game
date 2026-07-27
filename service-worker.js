@@ -1,4 +1,4 @@
-const CACHE_NAME = 'la-miniera-perduta-v11';
+const CACHE_NAME = 'la-miniera-perduta-v30';
 const ESSENTIAL_FILES = [
   './',
   './index.html',
@@ -7,6 +7,11 @@ const ESSENTIAL_FILES = [
   './apple-touch-icon.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './backgrounds/barriera-corallina.png',
+  './backgrounds/mare-aperto.png',
+  './backgrounds/abisso-blu.png',
+  './backgrounds/tempesta-oceanica.png',
+  './backgrounds/cielo-giungla.png',
   './quiz/parigi.jpg',
   './quiz/new-york.jpg',
   './quiz/londra.jpg',

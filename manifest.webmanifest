@@ -1,7 +1,7 @@
 {
   "name": "La Miniera Perduta",
   "short_name": "La Miniera",
-  "description": "Un'avventura nella miniera, giocabile anche offline.",
+  "description": "Un'avventura di 40 livelli tra la miniera, il mondo e il mistero della bussola.",
   "lang": "it",
   "start_url": "./",
   "scope": "./",
@@ -24,4 +24,3 @@
     }
   ]
 }
-
