@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <meta name="theme-color" content="#45a7e8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="La SCUOLA">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <title>La Scuola — Giorno 1</title>
   <style>
     :root{--ink:#18324a;--blue:#2396df;--yellow:#ffd84a;--paper:#fffdf4;--green:#45b96b;--red:#ed5a55}
@@ -223,6 +229,7 @@ function press(dir,on){moving=on?dir:(moving===dir?0:moving)}
 function doJump(){if(!platformActive||jumps>=2)return;vy=-12;jumps++;$('jump').classList.add('on');setTimeout(()=>$('jump').classList.remove('on'),120)}$('jump').addEventListener('pointerdown',e=>{e.preventDefault();doJump()});
 addEventListener('keydown',e=>{if(e.key==='ArrowLeft')press(-1,true);if(e.key==='ArrowRight')press(1,true);if(e.key===' '||e.key==='ArrowUp'){e.preventDefault();doJump()}});addEventListener('keyup',e=>{if(e.key==='ArrowLeft')press(-1,false);if(e.key==='ArrowRight')press(1,false)});
 function loop(){if(platformActive){x=Math.max(15,Math.min(innerWidth>1000?930:innerWidth-65,x+moving*5));vy+=.65;y+=vy;if(y>0){y=0;vy=0;jumps=0}$('hero').classList.toggle('walking',moving!==0&&y===0);$('hero').classList.toggle('jumping',y<0);$('hero').style.left=x+'px';$('hero').style.transform=`translateY(${y}px) scaleX(${moving<0?-1:1})`;const max=$('stage').clientWidth-85;if(x>max)window.currentRoute.next()}else{$('hero').classList.remove('walking','jumping')}requestAnimationFrame(loop)}loop();
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js').catch(()=>{}));
 </script>
 </body>
 </html>

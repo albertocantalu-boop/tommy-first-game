@@ -1,0 +1,15 @@
+{
+  "name": "La SCUOLA",
+  "short_name": "La SCUOLA",
+  "description": "Il gioco della scuola: lezioni, ricreazione e avventure di ogni giorno.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#bde8ff",
+  "theme_color": "#45a7e8",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
