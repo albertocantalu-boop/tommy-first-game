@@ -46,6 +46,8 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+  // Il quiz di storia di Arianna vive in una cartella a parte: non va in cache.
+  if (new URL(event.request.url).pathname.includes('/quiz-storia/')) return;
 
   // Per le pagine controlla prima la rete: così i nuovi livelli compaiono
   // subito quando il dispositivo è online, conservando il gioco offline.
